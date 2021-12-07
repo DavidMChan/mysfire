@@ -5,8 +5,8 @@ from typing import Dict, List, Optional, Union
 
 import numpy as np
 import torch
-import yas3
 
+from ..s3_utils import Connection
 from ._array_utils import stack_arrays_as_dict
 from ._processor import Processor
 
@@ -29,7 +29,10 @@ class NpyProcessor(Processor):
         self._s3_region = s3_region
         self._s3_client = None
         if self._s3_endpoint or self._s3_access_key or self._s3_secret_key or self._s3_region:
-            self._s3_client = yas3.Connection(
+            assert self._s3_access_key is not None, "S3 access key is required"
+            assert self._s3_secret_key is not None, "S3 secret key is required"
+
+            self._s3_client = Connection(
                 access_key=self._s3_access_key,
                 secret_key=self._s3_secret_key,
                 endpoint=self._s3_endpoint,

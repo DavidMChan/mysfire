@@ -10,8 +10,5 @@ for batch in dataloader:
     for k, v in batch.items():
         if isinstance(v, torch.Tensor):
             print(k, v.shape)
-        elif isinstance(v, dict):
-            for kk, vv in v.items():
-                print(kk, vv.shape)
         else:
             print(k, v)

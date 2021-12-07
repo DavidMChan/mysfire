@@ -1,10 +1,17 @@
 from typing import Any, Dict, List, Optional
 
 import torch
-from tokenizers import Tokenizer
 
 from ..torch_utils import padded_stack
 from ._processor import Processor
+
+HUGGINGFACE_TOKENIZERS_AVAILABLE = False
+try:
+    from tokenizers import Tokenizer
+
+    HUGGINGFACE_TOKENIZERS_AVAILABLE = True
+except ImportError:
+    pass
 
 
 class HuggingfaceTokenizationProcessor(Processor):
@@ -12,7 +19,15 @@ class HuggingfaceTokenizationProcessor(Processor):
         self,
         tokenizer_json: Optional[str] = None,
     ) -> None:
+
+        if not HUGGINGFACE_TOKENIZERS_AVAILABLE:
+            raise ImportError(
+                "Huggingface tokenizers are not available."
+                " Please install Huggingface tokenizers with `pip install tokenizers`"
+            )
+
         # Load the tokenizer definitions from JSON file
+        print(tokenizer_json)
         self._tokenizer = Tokenizer.from_file(tokenizer_json)
 
     @classmethod

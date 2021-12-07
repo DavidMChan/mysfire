@@ -1,15 +1,26 @@
 from typing import Dict, List, Optional, Union
 
-import h5py
 import numpy as np
 import torch
 
 from ._array_utils import stack_arrays_as_dict
 from ._processor import Processor
 
+H5PY_AVAILABLE = False
+try:
+    import h5py
+
+    H5PY_AVAILABLE = True
+except ImportError:
+    pass
+
 
 class H5PyDatasetProcessor(Processor):
     def __init__(self, filepath: str, keys: Optional[str] = None, pad: str = "false"):
+
+        if not H5PY_AVAILABLE:
+            raise ImportError("H5Py is not available. Please install H5Py with `pip install h5py`")
+
         self._file = h5py.File(filepath, "r")
         if keys:
             for k in keys.split("/"):
@@ -32,6 +43,10 @@ class H5PyDatasetProcessor(Processor):
 
 class H5PyMapProcessor(Processor):
     def __init__(self, filepath: str, keys: Optional[str] = None, pad: str = "false"):
+
+        if not H5PY_AVAILABLE:
+            raise ImportError("H5Py is not available. Please install H5Py with `pip install h5py`")
+
         self._file = h5py.File(filepath, "r")
         if keys:
             for k in keys.split("/"):
