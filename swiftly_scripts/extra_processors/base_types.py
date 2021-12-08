@@ -11,7 +11,7 @@ class ExtraIntProcessor(Processor):
         return "int"
 
     def collate(self, batch: List[Optional[str]]) -> List[str]:
-        return batch
+        return [b or "" for b in batch]
 
     def __call__(self, value: str) -> Optional[str]:
         return "OMG!!! " + value if value else None
