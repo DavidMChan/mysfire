@@ -1,5 +1,7 @@
+import glob
 import importlib
 import os
+import sys
 from typing import Dict, Optional, Type
 
 from ._processor import Processor, S3Processor
@@ -26,10 +28,15 @@ def register_processor_directory(directory: str) -> None:
     Args:
         directory (str): The directory to register.
     """
-    for _plugin_file in os.listdir(directory):
-        if _plugin_file.endswith(".py") and not _plugin_file.startswith("_"):
-            _plugin_name = _plugin_file[:-3]
-            _plugin_module = importlib.import_module("swiftly.processors.{}".format(_plugin_name))
+    for _plugin_file in glob.glob(os.path.join(directory, "**", "*.py"), recursive=True):
+        _plugin_name = os.path.splitext(os.path.basename(_plugin_file))[0]
+        if not _plugin_name.startswith("_") or _plugin_name.startswith("."):  # Ignore hidden files.
+            spec = importlib.util.spec_from_file_location(f"swiftly.processors.{_plugin_name}", _plugin_file)
+            if spec is not None:
+                _plugin_module = importlib.util.module_from_spec(spec)
+                sys.modules[_plugin_name] = _plugin_module
+                spec.loader.exec_module(_plugin_module)  # type: ignore
+            # _plugin_module = importlib.import_module(, "swiftly.processors.{}".format(_plugin_name))
             globals()[_plugin_name] = _plugin_module
 
     PROCESSORS.update({p.typestr(): p for p in Processor.__subclasses__()})  # type: ignore
