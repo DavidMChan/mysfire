@@ -1,8 +1,6 @@
 from typing import List, Optional
 
-import torch
-
-from ._processor import Processor
+from swiftly import Processor
 
 
 class ExtraIntProcessor(Processor):
