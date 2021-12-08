@@ -13,8 +13,12 @@
 #    limitations under the License.
 
 
+import logging
 import pathlib
+import tempfile
+import time
 import warnings
+from contextlib import _GeneratorContextManager, contextmanager
 from typing import Any, Generator, Optional, Union
 
 import filetype
@@ -31,10 +35,7 @@ except ImportError:
 def guess_mimetype(data: Union[bytes, str, pathlib.Path], mimetype: Optional[str] = None) -> str:
     if mimetype is None:
         ftype = filetype.guess(data)
-        if ftype is None:
-            ftype = "application/octet-stream"
-        else:
-            ftype = ftype.mime
+        ftype = "application/octet-stream" if ftype is None else ftype.mime
     else:
         ftype = mimetype
 
@@ -106,9 +107,8 @@ class Connection:
                 )
             # Region is specified
             endpoint = f"{'https://' if tls else 'http://'}s3.{region}.amazonaws.com"
-        else:
-            if tls:
-                warnings.warn("TLS is specified and endpoint is specified. Make sure that your endpoint uses https://")
+        elif tls:
+            warnings.warn("TLS is specified and endpoint is specified. Make sure that your endpoint uses https://")
 
         # Construct the boto3 client
         self._s3_client = boto3.client(
@@ -200,3 +200,43 @@ class Connection:
 
     def __exit__(self, exc_type, exc_value, traceback):
         pass
+
+    def resolve_s3_or_local(
+        self, uri: str, retry_download: Optional[int] = None, backoff: float = 2.0
+    ) -> _GeneratorContextManager[str]:
+        return resolve_s3_or_local(uri, retry_download, backoff, connection=self)
+
+
+@contextmanager
+def resolve_s3_or_local(
+    uri: str,
+    retry_download: Optional[int] = None,
+    backoff: float = 2.0,
+    connection: Optional[Connection] = None,
+    access_key: Optional[str] = None,
+    secret_key: Optional[str] = None,
+    endpoint: Optional[str] = None,
+    region: Optional[str] = None,
+    tls: bool = False,
+    default_bucket: str = None,
+) -> Generator[str, None, None]:
+
+    # Code to acquire resource, e.g.:
+    if uri.startswith("s3://"):
+        bucket, _, key = uri[5:].partition("/")
+        # Download the file
+        assert connection or (access_key is not None and secret_key is not None), "Connection must be fully specified"
+        with (
+            connection or Connection(access_key, secret_key, endpoint, region, tls, default_bucket)  # type: ignore
+        ) as conn:
+            with tempfile.NamedTemporaryFile() as f:
+                for i in range(retry_download or 1):  # Retry with backoff
+                    try:
+                        conn.download(key, f.name, bucket)
+                    except Exception as e:
+                        logging.warning(f"Failed to load {uri}: {e}")
+                        time.sleep(backoff ** i)
+
+                    yield f.name
+    else:
+        yield uri

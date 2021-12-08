@@ -3,7 +3,7 @@ import logging
 import os
 from typing import Dict, Type
 
-from ._processor import Processor
+from ._processor import Processor, S3Processor
 
 # Dynamically import all processors in this directory
 _plugin_dir = os.path.dirname(__file__)
@@ -15,5 +15,6 @@ for _plugin_file in _plugin_files:
         globals()[_plugin_name] = _plugin_module
 
 PROCESSORS: Dict[str, Type[Processor]] = {p.typestr(): p for p in Processor.__subclasses__()}  # type: ignore
+PROCESSORS.update({p.typestr(): p for p in S3Processor.__subclasses__()})  # type: ignore
 for k, v in PROCESSORS.items():
     logging.debug("Loaded Processor: {} for type {}".format(k, v))
