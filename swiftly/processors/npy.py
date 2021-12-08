@@ -1,12 +1,9 @@
-import logging
-import tempfile
-import time
 from typing import Dict, List, Optional, Union
 
 import numpy as np
 import torch
 
-from ..s3_utils import Connection, resolve_s3_or_local
+from ..s3_utils import resolve_s3_or_local
 from ._array_utils import stack_arrays_as_dict
 from ._processor import S3Processor
 
