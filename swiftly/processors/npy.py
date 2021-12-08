@@ -45,7 +45,13 @@ class NpyProcessor(Processor):
 
     def collate(
         self, batch: List[Optional[torch.Tensor]]
-    ) -> Union[Optional[torch.Tensor], Optional[Dict[str, torch.Tensor]]]:
+    ) -> Optional[
+        Union[
+            torch.Tensor,
+            Dict[str, Union[Optional[torch.Tensor], Optional[List[Optional[torch.Tensor]]]]],
+            List[Optional[torch.Tensor]],
+        ]
+    ]:
         return stack_arrays_as_dict(batch, self._pad)
 
     def _load_from_s3(self, path: str) -> np.ndarray:
@@ -85,7 +91,13 @@ class NpyIndexedFileProcessor(Processor):
 
     def collate(
         self, batch: List[Optional[torch.Tensor]]
-    ) -> Union[Optional[torch.Tensor], Optional[Dict[str, torch.Tensor]]]:
+    ) -> Optional[
+        Union[
+            torch.Tensor,
+            Dict[str, Union[Optional[torch.Tensor], Optional[List[Optional[torch.Tensor]]]]],
+            List[Optional[torch.Tensor]],
+        ]
+    ]:
         return stack_arrays_as_dict(batch, self._pad)
 
     def __call__(self, value: str) -> Optional[torch.Tensor]:

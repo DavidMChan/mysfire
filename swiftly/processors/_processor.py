@@ -9,7 +9,7 @@ class Processor(Protocol):
     def typestr(cls):
         raise NotImplementedError()
 
-    def collate(self, batch: List[Optional[Any]]) -> Any:
+    def collate(self, batch: List[Any]) -> Any:
         raise NotImplementedError()
 
     def __call__(self, column: str) -> Optional[Any]:

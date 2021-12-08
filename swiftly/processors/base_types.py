@@ -35,10 +35,10 @@ class StringProcessor(Processor):
         return "str"
 
     def collate(self, batch: List[Optional[str]]) -> List[str]:
-        return [b if b else "" for b in batch]
+        return [b or "" for b in batch]
 
     def __call__(self, value: str) -> Optional[str]:
-        return value if value else None
+        return value or None
 
 
 class StringListProcessor(Processor):
@@ -50,7 +50,7 @@ class StringListProcessor(Processor):
         return "str.list"
 
     def collate(self, batch: List[Optional[List[str]]]) -> List[List[str]]:
-        return [b if b else [] for b in batch]
+        return [b or [] for b in batch]
 
     def __call__(self, value: str) -> Optional[List[str]]:
         return value.split(self._delimiter) if value else None

@@ -26,6 +26,7 @@ def _build_processor(column: str) -> Tuple[str, Processor]:
         raise ValueError(f"Unknown column type: {column_type}")
 
     if column_args_group:
+        # TODO: make this split argument lists better
         column_args = [v.partition("=") for v in column_args_group.split(",")]
         arg_statements = {k: v for k, _, v in column_args}
         return (f"{column_name}+++{column_type}", PROCESSORS[column_type](**arg_statements))
