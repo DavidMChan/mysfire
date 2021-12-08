@@ -4,6 +4,19 @@ from ..s3_utils import Connection
 
 
 class Processor(Protocol):
+    """Core processor type - Processores must have three methods:
+
+    - __call__: Takes a single path/string from the TSV and returns a single object
+    - collate: Takes a list of objects and returns a single object
+    - typestr: Return a string which is matched against the type field of the TSV header
+
+    Optionally, processors may have a `__init__` method which takes any set of Optional[str] arguments
+    which are parsed from the TSV header.
+
+    Args:
+        Protocol ([type]): [description]
+    """
+
     def __init__(self, *args, **kwargs) -> None:
         pass
 
@@ -19,6 +32,10 @@ class Processor(Protocol):
 
 
 class S3Processor(Processor):
+    """
+    Processor base class which additionally adds a convenient connection to allow supporting (optional) S3 objects
+    """
+
     @classmethod
     def typestr(cls):
         return "__s3"

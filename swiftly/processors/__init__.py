@@ -1,20 +1,39 @@
 import importlib
-import logging
 import os
-from typing import Dict, Type
+from typing import Dict, Optional, Type
 
 from ._processor import Processor, S3Processor
 
-# Dynamically import all processors in this directory
-_plugin_dir = os.path.dirname(__file__)
-_plugin_files = os.listdir(_plugin_dir)
-for _plugin_file in _plugin_files:
-    if _plugin_file.endswith(".py") and not _plugin_file.startswith("_"):
-        _plugin_name = _plugin_file[:-3]
-        _plugin_module = importlib.import_module("swiftly.processors.{}".format(_plugin_name))
-        globals()[_plugin_name] = _plugin_module
+# A global registry of all processors available to the system.
+PROCESSORS: Dict[str, Type[Processor]] = {}
 
-PROCESSORS: Dict[str, Type[Processor]] = {p.typestr(): p for p in Processor.__subclasses__()}  # type: ignore
-PROCESSORS.update({p.typestr(): p for p in S3Processor.__subclasses__()})  # type: ignore
-for k, v in PROCESSORS.items():
-    logging.debug("Loaded Processor: {} for type {}".format(k, v))
+
+def register_processor(processor: Type[Processor], typestr: Optional[str] = None) -> Type[Processor]:
+    """Register a processor class with the system.
+
+    Args:
+        processor (Type[Processor]): The class to register (either as a decorator, or as a class).
+        typestr (str, optional): The typestring to register the class with (overrides the class typestring if
+                                 specified). Defaults to None.
+    """
+    PROCESSORS[typestr or processor.typestr()] = processor
+    return processor
+
+
+def register_processor_directory(directory: str) -> None:
+    """Register all processors in a directory.
+
+    Args:
+        directory (str): The directory to register.
+    """
+    for _plugin_file in os.listdir(directory):
+        if _plugin_file.endswith(".py") and not _plugin_file.startswith("_"):
+            _plugin_name = _plugin_file[:-3]
+            _plugin_module = importlib.import_module("swiftly.processors.{}".format(_plugin_name))
+            globals()[_plugin_name] = _plugin_module
+
+    PROCESSORS.update({p.typestr(): p for p in Processor.__subclasses__()})  # type: ignore
+    PROCESSORS.update({p.typestr(): p for p in S3Processor.__subclasses__()})  # type: ignore
+
+
+register_processor_directory(os.path.dirname(__file__))

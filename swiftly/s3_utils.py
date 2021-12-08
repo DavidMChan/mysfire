@@ -203,7 +203,7 @@ class Connection:
 
     def resolve_s3_or_local(
         self, uri: str, retry_download: Optional[int] = None, backoff: float = 2.0
-    ) -> _GeneratorContextManager[str]:
+    ) -> _GeneratorContextManager:
         return resolve_s3_or_local(uri, retry_download, backoff, connection=self)
 
 

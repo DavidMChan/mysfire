@@ -1,0 +1,7 @@
+x:str	video:video:uniform_temporal_subsample=16,short_side_scale=224,uniform_crop=224
+video1	/data/captioning/msr_vtt/train_val_videos/video1.mp4
+video2	/data/captioning/msr_vtt/train_val_videos/video2.mp4
+video3	/data/captioning/msr_vtt/train_val_videos/video3.mp4
+video4	/data/captioning/msr_vtt/train_val_videos/video4.mp4
+video5	/data/captioning/msr_vtt/train_val_videos/video5.mp4
+video6	/data/captioning/msr_vtt/train_val_videos/video6.mp4
