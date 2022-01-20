@@ -3,7 +3,7 @@ from typing import Any, Dict, Generator, List, Mapping, Optional, Tuple
 
 import torch
 
-from .parser import SwiftlyHeaderLexer, SwiftlyHeaderParser
+from .parser import SwiftlyHeaderLexer, SwiftlyHeaderParser  # type: ignore
 from .processors import PROCESSORS, Processor
 
 # Simple import guard to check if pytorch lightning is available before building some of the codebase
@@ -58,10 +58,7 @@ class Dataset(torch.utils.data.Dataset):
         return output
 
     def collate_fn(self, batch: List[Mapping[str, Any]]) -> Dict[str, Any]:
-        outputs = {}
-        for i, key in enumerate(batch[0].keys()):
-            outputs[key] = self._processors[i][1].collate([v[key] for v in batch])
-        return outputs
+        return {key: self._processors[i][1].collate([v[key] for v in batch]) for i, key in enumerate(batch[0].keys())}
 
 
 class DataLoader(torch.utils.data.DataLoader):
