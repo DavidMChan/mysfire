@@ -2,6 +2,7 @@ from collections import OrderedDict
 from typing import Any, Dict, Generator, List, Mapping, Optional, Tuple
 
 import torch
+from sly.lex import LexError
 
 from .parser import SwiftlyHeaderLexer, SwiftlyHeaderParser  # type: ignore
 from .processors import PROCESSORS, Processor
@@ -20,7 +21,15 @@ def _build_processors(columns: List[str]) -> Generator[Tuple[str, Processor], No
     header_line = "\t".join(columns)
     lexer = SwiftlyHeaderLexer()
     parser = SwiftlyHeaderParser()
-    processor_defs = parser.parse(lexer.tokenize(header_line))
+    error = False
+    try:
+        processor_defs = parser.parse(lexer.tokenize(header_line))
+    except LexError as e:
+        error = e
+    if error:
+        # Avoids an annoying error message with multiple layers
+        raise SyntaxError(f"Invalid header line: {error}")
+
     for output_key, proc_type, args in processor_defs:
         if proc_type not in PROCESSORS:
             raise ValueError(f"Unknown column type: {proc_type}")

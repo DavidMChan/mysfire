@@ -102,6 +102,11 @@ class SwiftlyHeaderParser(Parser):
     def argval(self, p):
         return p.QSTRING
 
+    def error(self, p):
+        if p:
+            raise SyntaxError(f"Header syntax error: unexpected '{p.value}' at line {p.lineno}, index {p.index}")
+        raise SyntaxError("Header syntax error: unexpected end of file")
+
 
 if __name__ == "__main__":
     _PARSER_TEST_DATA = r"""
