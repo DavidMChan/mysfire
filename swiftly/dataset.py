@@ -51,11 +51,7 @@ class Dataset(torch.utils.data.Dataset):
         return len(self._samples)
 
     def __getitem__(self, index: int) -> Mapping[str, Any]:
-        row = self._samples[index]
-        output = OrderedDict()
-        for (k, v), r in zip(self._processors, row):
-            output[k] = v(r)
-        return output
+        return OrderedDict((k, v(r)) for (k, v), r in zip(self._processors, self._samples[index]))
 
     def collate_fn(self, batch: List[Mapping[str, Any]]) -> Dict[str, Any]:
         return {key: self._processors[i][1].collate([v[key] for v in batch]) for i, key in enumerate(batch[0].keys())}
