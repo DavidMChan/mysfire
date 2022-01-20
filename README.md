@@ -1,3 +1,218 @@
 # Swiftly - Load data faster than light :)
 
-Load data to pytorch from anywhere faster.
+Swiftly takes the headache out of writing dataset and data loader code for pytorch (that you usually repeat time and
+time again). Swiftly encourages code reuse between projects when possible, and allows for easy extensibility when code
+reuse is impossible. Not only this, swiftly makes it easy to scale your datasets to hundreds of nodes, without thinking:
+cloud storage support is built in (and easy to extend), making it a powerful tool when going from your local laptop to
+your public or private cloud.
+
+## Installation
+
+Install this library with pip - `pip install swiftly`
+
+## Tour
+
+Each swiftly dataset is composed of three components:
+1. A definition describing the types of data (and preprocessing steps) in each column of your tabular file. Usually,
+    this is just the header of your CSV or TSV file.
+2. A tabular data store (usually just a CSV or TSV file, but we can load tabular data from S3, SQL or any other
+    extensible columnular store)
+3. A set of processors for processing and loading the data. For most common data types, these processors are built in,
+    but we recognize that every dataset is different, so we make it as easy as possible to add new processors, or
+    download third party processors from the swiftly community hub.
+
+
+Let's look at a hello-world swiftly dataset:
+```tsv
+# simple_dataset.tsv
+class:int   data:npy
+0   sample_0.npy
+1   sample_1.npy
+2   sample_2.npy
+```
+
+That's it. Easy as defining the types of each of the objects and a name for each column as a header in a TSV file. The
+data is then super easy to load to your normal PyTorch workflow:
+```py
+from swiftly import DataLoader
+# Returns a standard PyTorch DataLoader, just replace the dataset with the TSV file!
+train_dataloader = DataLoader('simple_dataset.tsv', batch_size = 3, num_workers=12)
+for batch in train_dataloader:
+    print(batch)
+```
+
+This dataset will produce a dictionary:
+```py
+{
+    'class': [0, 1, 2]
+    'data': np.ndarray # Array of shape [BS x ...]
+}
+```
+
+We handle loading, collating, and batching the data, so you can focus on training models, and iterating on experiments.
+Onboarding new datasets is as easy as setting up the new TSV file, and changing the links. No more messing around with
+the code to add a new dataset switch! No coding that numpy loading dataset for the 100th time either - we've already
+learned to handle all kinds of numpy types (even ragged arrays!)
+
+Need S3? That's as easy as configuring a column with your S3 details:
+```
+# simple_s3_dataset.tsv
+class:int   data:npy:s3_access_key=XXX,s3_secret_key=XXX,s3_endpoint=XXX
+0   s3://data/sample_0.npy
+1   s3://data/sample_1.npy
+2   s3://data/sample_2.npy
+```
+
+Merging two S3 sources? Configure each column independently:
+```
+# multisource_s3_dataset.tsv
+class:int   data:npy:s3_access_key=AAA,s3_secret_key=AAA,s3_endpoint=AAA    data_b:npy:s3_access_key=BBB,s3_secret_key=BBB,s3_endpoint=BBB
+0   s3://data/sample_0.npy   s3://data/sample_0.npy
+1   s3://data/sample_1.npy   s3://data/sample_1.npy
+2   s3://data/sample_2.npy   s3://data/sample_2.npy
+```
+
+Worried about putting your keys in a dataset file? Use `$S3_SECRET_KEY` (a `$` prefix) to load environment variables at
+runtime.
+
+Loading images or video?
+```
+# multimedia_s3_dataset.tsv
+class:int   picture:img:resize=256  frames:video:uniform_temporal_subsample=16
+0   image_1.png     video_1.mp4
+1   image_2.jpg     video_2.mp4
+2   image_3.JPEG     video_3.mp4
+```
+
+Need to do NLP? Huggingface Tokenizers is built in
+```
+# tokenization_s3_dataset.tsv
+class:int   labels:nlp.huggingface_tokenization:tokenizer_json=./tokenizer.json
+0   Hello world!
+1   Welcome to the Swiftly data processors
+```
+
+How about SQL queries? We can do that too!
+```
+# sql_dataset.tsv
+class:int data:sql:type=int
+0   SELECT data from table where ID=0
+0   SELECT data from table where ID=0
+```
+
+Want to be more efficient?
+```
+# complex_sql_dataset.tsv
+# Pass a query that is run once and cached, then the data is returned from the index based on the data. In this case,
+# we return an int field based on lookup in the query data. The type could be any processor, so if you need to write
+# a custom transform, it's easy as pie.
+class:int data:sql.indexed_query:query=SELECT age from data,index=user_id,type=int
+0   0
+0   1
+```
+
+
+Working with PyTorch Lightning? LightningDataModules are built in:
+```py
+from swiftly import LightningDataModule
+datamodule = LightningDataModule(
+    'train.tsv',
+    'validate.tsv',
+    'test.tsv'
+)
+```
+
+Need to run something at test-time? All you need to do is build a OneShotLoader:
+```py
+from swiftly import OneShotLoader
+
+loader = OneShotLoader(like='train.tsv') # Initialize from a TSV
+loader = OneShotLoader(columns=["class:int", "data:npy"]) # or pass the columns directly!
+
+
+data = loader(*columns) # Load data with a single method
+data = loader.load_tsv_line(input_string) # Load using a single TSV line
+```
+
+Need to load a custom datatype? Or extend the existing datatypes? It's super easy:
+```py
+from swiftly import register_processor, Processor
+
+# Register the processor with swiftly before creating a dataset
+@register_processor
+class StringAppendProcessor(Processor):
+
+    # Setup an init function with any optional arguments that are parsed from the column. We handle all of the
+    # complicated parsing for you, just take all options as Optional[str] arguments!
+    def __init__(self, string_to_append: Optional[str] = None):
+        self._string_to_append = string_to_append
+
+    # Define a typestring that is matched against the TSV columns. Registered processors take precidence over
+    # processors that are loaded by default
+    @classmethod
+    def typestr(cls):
+        return "str"
+
+    # Define a collate function for your data type which handles batching. If this is missing, we use the standard
+    # torch collate function instead
+    def collate(self, batch: List[Optional[str]]) -> List[str]:
+        return [b or "" for b in batch]
+
+    # Add a call function which transforms the string data in the TSV into a single data sample.
+    def __call__(self, value: str) -> str:
+        return value + self._string_to_append if self._string_to_append else ""
+```
+
+Want to add remote data loading to your processor? It's as easy as 1.2.3:
+```py
+from swiftly import register_processor, S3Processor
+from swiftly.s3_utils import resolve_s3_or_local
+
+# Start by extending the S3 processor
+@register_processor
+class S3FileProcessor(S3Processor):
+    def __init__(self,
+                 s3_endpoint: Optional[str] = None,
+                 s3_access_key: Optional[str] = None,
+                 s3_secret_key: Optional[str] = None,
+                 s3_region: Optional[str] = None,):
+
+        super().__init__(
+            s3_endpoint=s3_endpoint,
+            s3_access_key=s3_access_key,
+            s3_secret_key=s3_secret_key,
+            s3_region=s3_region,
+        )
+
+    @classmethod
+    def typestr(cls):
+        return "str"
+
+    def collate(self, batch: List[Optional[str]]) -> List[str]:
+        return [b or "" for b in batch]
+
+    def __call__(self, value: str) -> Optional[str]:
+        try:
+            # Use resolve_s3_or_local to fetch any file in S3 to a local filepath (or use a local file path if it's local)
+            with resolve_s3_or_local(value, connection=self.s3_client) as f:
+                with open(f, 'r') as fp:
+                    return f
+        except Exception as ex:
+            return None
+```
+
+Need to register a lot of processors? Make use of the convenient function:
+```py
+from swiftly import register_processor_directory
+
+register_processor_directory('./plugins')
+```
+
+For full details, and to check out everything that we offer, check out our docs!
+
+## Useful?
+
+Cite us!
+```
+Bibtex
+```

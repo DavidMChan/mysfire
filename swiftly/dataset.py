@@ -1,8 +1,9 @@
 from collections import OrderedDict
-from typing import List, Optional, Tuple
+from typing import Any, Dict, Generator, List, Mapping, Optional, Tuple
 
 import torch
 
+from .parser import SwiftlyHeaderLexer, SwiftlyHeaderParser
 from .processors import PROCESSORS, Processor
 
 # Simple import guard to check if pytorch lightning is available before building some of the codebase
@@ -15,22 +16,15 @@ except ImportError:
     pass
 
 
-def _build_processor(column: str) -> Tuple[str, Processor]:
-    """
-    Builds a list of functions that can be used to process a row of data.
-    """
-    column_name, _, column_type_args = column.partition(":")
-    column_type, _, column_args_group = column_type_args.partition(":")
-
-    if column_type not in PROCESSORS:
-        raise ValueError(f"Unknown column type: {column_type}")
-
-    if column_args_group:
-        # TODO: make this split argument lists better
-        column_args = [v.partition("=") for v in column_args_group.split(",")]
-        arg_statements = {k: v for k, _, v in column_args}
-        return (f"{column_name}+++{column_type}", PROCESSORS[column_type](**arg_statements))
-    return (f"{column_name}+++{column_type}", PROCESSORS[column_type]())
+def _build_processors(columns: List[str]) -> Generator[Tuple[str, Processor], None, None]:
+    header_line = "\t".join(columns)
+    lexer = SwiftlyHeaderLexer()
+    parser = SwiftlyHeaderParser()
+    processor_defs = parser.parse(lexer.tokenize(header_line))
+    for output_key, proc_type, args in processor_defs:
+        if proc_type not in PROCESSORS:
+            raise ValueError(f"Unknown column type: {proc_type}")
+        yield (output_key, PROCESSORS[proc_type](**(args or {})))
 
 
 def _resolve_samples(filepath: str) -> Tuple[List[List[str]], Optional[List[str]]]:
@@ -44,36 +38,35 @@ class Dataset(torch.utils.data.Dataset):
         self,
         filepath: str,
         columns: Optional[List[str]] = None,
-    ):
+    ) -> None:
         self._filepath = filepath
         self._samples, self._columns = _resolve_samples(self._filepath)
         self._columns = columns if columns is not None else self._columns
 
         if self._columns is None:
             raise RuntimeError("Dataset {} has no column headers".format(self._filepath))
-        self._processors = [_build_processor(c) for c in self._columns]
+        self._processors = list(_build_processors(self._columns))
 
     def __len__(self):
         return len(self._samples)
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> Mapping[str, Any]:
         row = self._samples[index]
         output = OrderedDict()
         for (k, v), r in zip(self._processors, row):
             output[k] = v(r)
         return output
 
-    def collate_fn(self, batch):
+    def collate_fn(self, batch: List[Mapping[str, Any]]) -> Dict[str, Any]:
         outputs = {}
-        for i, (key, value) in enumerate(batch[0].items()):
-            k, _, t = key.rpartition("+++")
-            outputs[k] = self._processors[i][1].collate([v[key] for v in batch])
+        for i, key in enumerate(batch[0].keys()):
+            outputs[key] = self._processors[i][1].collate([v[key] for v in batch])
         return outputs
 
 
 class DataLoader(torch.utils.data.DataLoader):
     # Easy class for managing data loaders
-    def __init__(self, filepath: str, columns: Optional[List[str]] = None, **kwargs):
+    def __init__(self, filepath: str, columns: Optional[List[str]] = None, **kwargs) -> None:
         self._active_dataset = Dataset(filepath, columns)
         if "collate_fn" not in kwargs:
             kwargs.update(

@@ -10,5 +10,6 @@ for batch in dataloader:
     for k, v in batch.items():
         if isinstance(v, torch.Tensor):
             print(k, v.shape)
+            # print(k, v)
         else:
             print(k, v)

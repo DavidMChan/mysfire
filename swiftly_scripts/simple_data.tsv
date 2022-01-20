@@ -1,4 +1,4 @@
-x:int	y:int	labels:nlp.huggingface_tokenization:tokenizer_json=./swiftly_scripts/msrvtt-0.0.1.json
+x:int	y:int	labels:nlp.huggingface_tokenization(tokenizer_json="./swiftly_scripts/msrvtt-0.0.1.json")
 0	1	Hello world
 1	2	My name is david
 2	3	I like to eat pie

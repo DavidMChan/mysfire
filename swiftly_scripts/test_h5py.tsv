@@ -1,4 +1,4 @@
-x:str	motion_features:h5py.dataset:filepath=/home/davidchan/data/msrvtt/asnvc/linspace16_resnext101_c3d_r1plus2d18.h5,keys=MSR-VTT/c3d_features	image_features:h5py.map:filepath=/home/davidchan/Repos/Non-Autoregressive-Video-Captioning/data/MSRVTT/feats/motion_resnext101_kinetics_duration16_overlap8.hdf5
+x:str	motion_features:h5py.dataset(filepath="/home/davidchan/data/msrvtt/asnvc/linspace16_resnext101_c3d_r1plus2d18.h5",keys="MSR-VTT/c3d_features")	image_features:h5py.map(filepath="/home/davidchan/Repos/Non-Autoregressive-Video-Captioning/data/MSRVTT/feats/motion_resnext101_kinetics_duration16_overlap8.hdf5")
 video1	0	video1
 video2	1	video2
 video3	2	video3

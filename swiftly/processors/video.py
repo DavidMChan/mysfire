@@ -99,7 +99,7 @@ class VideoProcessor(Processor):
         # Load the audio
         audio_data = None
         if "audio" in video_data and video_data["audio"] is not None:
-            audio_data = self._audio_transform(video_data)["audio"].unfold(0, 1024, 1024)
+            audio_data = self._audio_transform(video_data)["audio"]
 
         return {
             "video": frames,
