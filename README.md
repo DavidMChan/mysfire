@@ -116,12 +116,11 @@ Need to run something at test-time? All you need to do is build a OneShotLoader:
 ```py
 from mysfire import OneShotLoader
 
-loader = OneShotLoader(like='train.tsv') # Initialize from a TSV
+loader = OneShotLoader(filename='train.tsv') # Initialize from a TSV
 loader = OneShotLoader(columns=["class:int", "data:npy"]) # or pass the columns directly!
 
 
-data = loader(*columns) # Load data with a single method
-data = loader.load_tsv_line(input_string) # Load using a single TSV line
+data = loader([["field 1", "field 2"],["field 1", "field 2"]]) # Load data with a single method
 ```
 
 Need to load a custom datatype? Or extend the existing datatypes? It's super easy:
