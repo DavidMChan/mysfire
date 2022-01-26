@@ -17,8 +17,7 @@ except ImportError:
     pass
 
 
-def _build_processors(columns: List[str]) -> Generator[Tuple[str, Processor], None, None]:
-    header_line = "\t".join(columns)
+def build_processors(header_line: str) -> Generator[Tuple[str, Processor], None, None]:
     lexer = SwiftlyHeaderLexer()
     parser = SwiftlyHeaderParser()
     error = False
@@ -36,7 +35,7 @@ def _build_processors(columns: List[str]) -> Generator[Tuple[str, Processor], No
         yield (output_key, PROCESSORS[proc_type](**(args or {})))
 
 
-def _resolve_samples(filepath: str) -> Tuple[List[List[str]], Optional[List[str]]]:
+def resolve_samples(filepath: str) -> Tuple[List[List[str]], Optional[List[str]]]:
     with open(filepath, "r") as f:
         samples = [line.strip().split("\t") for line in f]
     return samples[1:], samples[0]
@@ -49,12 +48,12 @@ class Dataset(torch.utils.data.Dataset):
         columns: Optional[List[str]] = None,
     ) -> None:
         self._filepath = filepath
-        self._samples, self._columns = _resolve_samples(self._filepath)
+        self._samples, self._columns = resolve_samples(self._filepath)
         self._columns = columns if columns is not None else self._columns
 
         if self._columns is None:
             raise RuntimeError("Dataset {} has no column headers".format(self._filepath))
-        self._processors = list(_build_processors(self._columns))
+        self._processors = list(build_processors("\t".join(self._columns)))
 
     def __len__(self):
         return len(self._samples)
@@ -64,6 +63,9 @@ class Dataset(torch.utils.data.Dataset):
 
     def collate_fn(self, batch: List[Mapping[str, Any]]) -> Dict[str, Any]:
         return {key: self._processors[i][1].collate([v[key] for v in batch]) for i, key in enumerate(batch[0].keys())}
+
+    def get_processors(self) -> List[Tuple[str, Processor]]:
+        return self._processors
 
 
 class DataLoader(torch.utils.data.DataLoader):
