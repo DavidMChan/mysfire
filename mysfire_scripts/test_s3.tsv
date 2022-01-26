@@ -1,4 +1,4 @@
-x:str	video:npy(s3_access_key="XXX",s3_secret_key="XXX",s3_endpoint="XXX)
+x:str	video:npy(s3_access_key="XXX",s3_secret_key="XXX",s3_endpoint="XXX")
 video1	s3://kendra/k600-val/ironing hair/2G_nQDmHWPA_000215_000225_audio_features.npy
 video2	s3://kendra/k600-val/ironing hair/C4G4xhwRg0Y_000263_000273_audio_features.npy
 video3	s3://kendra/k600-val/ironing hair/OnJOYbLhk9o_000664_000674_audio_features.npy
