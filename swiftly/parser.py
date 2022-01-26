@@ -1,5 +1,7 @@
 # flake8: noqa
 # type: ignore
+import os
+
 from sly import Lexer, Parser
 
 
@@ -16,12 +18,14 @@ class SwiftlyHeaderLexer(Lexer):
         IDENTIFIER,
         NEWLINE,
         TAB,
+        ENV_VAR,
     }
     ignore = " "
 
     QSTRING = r'"(?:[^"\\]|\\.)*"'
     IDENTIFIER = r"[a-zA-Z_][a-zA-Z0-9_\.]*"
     FLOAT_NUMBER = r"[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?"
+    ENV_VAR = r"\$[a-zA-Z_][a-zA-Z0-9_\.]*"
     NUMBER = r"\d+"
     LPAREN = r"\("
     RPAREN = r"\)"
@@ -43,6 +47,10 @@ class SwiftlyHeaderLexer(Lexer):
 
     def QSTRING(self, t):
         t.value = t.value[1:-1].replace('\\"', '"')
+        return t
+
+    def ENV_VAR(self, t):
+        t.value = os.environ.get(t.value[1:], None)
         return t
 
 
@@ -102,6 +110,10 @@ class SwiftlyHeaderParser(Parser):
     def argval(self, p):
         return p.QSTRING
 
+    @_("ENV_VAR")
+    def argval(self, p):
+        return p.ENV_VAR
+
     def error(self, p):
         if p:
             raise SyntaxError(f"Header syntax error: unexpected '{p.value}' at line {p.lineno}, index {p.index}")
@@ -110,7 +122,7 @@ class SwiftlyHeaderParser(Parser):
 
 if __name__ == "__main__":
     _PARSER_TEST_DATA = r"""
-x:str	video:npy(s3_access_key="XXX",s3_secret_key="XXX",s3_endpoint="XXX",value=1e-7)
+x:str	video:npy(s3_access_key="XXX",s3_secret_key="XXX",s3_endpoint=$ENDPOINT,value=1e-7)
 """
 
     lexer = SwiftlyHeaderLexer()

@@ -57,7 +57,7 @@ learned to handle all kinds of numpy types (even ragged arrays!)
 Need S3? That's as easy as configuring a column with your S3 details:
 ```
 # simple_s3_dataset.tsv
-class:int   data:npy:s3_access_key=XXX,s3_secret_key=XXX,s3_endpoint=XXX
+class:int   data:npy(s3_access_key="XXX",s3_secret_key="XXX",s3_endpoint="XXX")
 0   s3://data/sample_0.npy
 1   s3://data/sample_1.npy
 2   s3://data/sample_2.npy
@@ -66,7 +66,7 @@ class:int   data:npy:s3_access_key=XXX,s3_secret_key=XXX,s3_endpoint=XXX
 Merging two S3 sources? Configure each column independently:
 ```
 # multisource_s3_dataset.tsv
-class:int   data:npy:s3_access_key=AAA,s3_secret_key=AAA,s3_endpoint=AAA    data_b:npy:s3_access_key=BBB,s3_secret_key=BBB,s3_endpoint=BBB
+class:int  data_a:npy(s3_access_key="AAA",s3_secret_key="AAA",s3_endpoint="AAA")    data_b:npy(s3_access_key="BBB",s3_secret_key="BBB",s3_endpoint="BBB")
 0   s3://data/sample_0.npy   s3://data/sample_0.npy
 1   s3://data/sample_1.npy   s3://data/sample_1.npy
 2   s3://data/sample_2.npy   s3://data/sample_2.npy
@@ -75,10 +75,19 @@ class:int   data:npy:s3_access_key=AAA,s3_secret_key=AAA,s3_endpoint=AAA    data
 Worried about putting your keys in a dataset file? Use `$S3_SECRET_KEY` (a `$` prefix) to load environment variables at
 runtime.
 
+```
+# simple_s3_dataset.tsv
+class:int   data:npy(s3_access_key=$S3_ACCESS_KEY,s3_secret_key=$S3_SECRET_KEY,s3_endpoint=$S3_ENDPOINT)
+0   s3://data/sample_0.npy
+1   s3://data/sample_1.npy
+2   s3://data/sample_2.npy
+```
+
+
 Loading images or video?
 ```
 # multimedia_s3_dataset.tsv
-class:int   picture:img:resize=256  frames:video:uniform_temporal_subsample=16
+class:int   picture:img(resize=256)  frames:video(uniform_temporal_subsample=16)
 0   image_1.png     video_1.mp4
 1   image_2.jpg     video_2.mp4
 2   image_3.JPEG     video_3.mp4
@@ -87,28 +96,9 @@ class:int   picture:img:resize=256  frames:video:uniform_temporal_subsample=16
 Need to do NLP? Huggingface Tokenizers is built in
 ```
 # tokenization_s3_dataset.tsv
-class:int   labels:nlp.huggingface_tokenization:tokenizer_json=./tokenizer.json
+class:int   labels:nlp.huggingface_tokenization(tokenizer_json="./tokenizer.json")
 0   Hello world!
 1   Welcome to the Swiftly data processors
-```
-
-How about SQL queries? We can do that too!
-```
-# sql_dataset.tsv
-class:int data:sql:type=int
-0   SELECT data from table where ID=0
-0   SELECT data from table where ID=0
-```
-
-Want to be more efficient?
-```
-# complex_sql_dataset.tsv
-# Pass a query that is run once and cached, then the data is returned from the index based on the data. In this case,
-# we return an int field based on lookup in the query data. The type could be any processor, so if you need to write
-# a custom transform, it's easy as pie.
-class:int data:sql.indexed_query:query=SELECT age from data,index=user_id,type=int
-0   0
-0   1
 ```
 
 
@@ -163,7 +153,7 @@ class StringAppendProcessor(Processor):
         return value + self._string_to_append if self._string_to_append else ""
 ```
 
-Want to add remote data loading to your processor? It's as easy as 1.2.3:
+Want to add remote data loading to your processor? It's as easy as:
 ```py
 from swiftly import register_processor, S3Processor
 from swiftly.s3_utils import resolve_s3_or_local
