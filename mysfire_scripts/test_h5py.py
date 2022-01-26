@@ -1,8 +1,8 @@
 import torch
 
-from swiftly import Dataset
+from mysfire import Dataset
 
-ds = Dataset("/home/davidchan/Projects/swiftly/swiftly_scripts/test_h5py.tsv")
+ds = Dataset("/home/davidchan/Projects/mysfire/mysfire_scripts/test_h5py.tsv")
 dataloader = torch.utils.data.DataLoader(ds, batch_size=2, shuffle=False, collate_fn=ds.collate_fn)
 for batch in dataloader:
     for k, v in batch.items():

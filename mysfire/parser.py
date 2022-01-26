@@ -5,7 +5,7 @@ import os
 from sly import Lexer, Parser
 
 
-class SwiftlyHeaderLexer(Lexer):
+class MysfireHeaderLexer(Lexer):
     tokens = {
         NUMBER,
         FLOAT_NUMBER,
@@ -54,8 +54,8 @@ class SwiftlyHeaderLexer(Lexer):
         return t
 
 
-class SwiftlyHeaderParser(Parser):
-    tokens = SwiftlyHeaderLexer.tokens
+class MysfireHeaderParser(Parser):
+    tokens = MysfireHeaderLexer.tokens
 
     @_("columns NEWLINE")
     def header(self, p):
@@ -125,8 +125,8 @@ if __name__ == "__main__":
 x:str	video:npy(s3_access_key="XXX",s3_secret_key="XXX",s3_endpoint=$ENDPOINT,value=1e-7)
 """
 
-    lexer = SwiftlyHeaderLexer()
-    parser = SwiftlyHeaderParser()
+    lexer = MysfireHeaderLexer()
+    parser = MysfireHeaderParser()
     for line in _PARSER_TEST_DATA.splitlines():
         if not line:
             continue

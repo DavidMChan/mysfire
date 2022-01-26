@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from swiftly import Processor
+from mysfire import Processor
 
 
 class ExtraIntProcessor(Processor):

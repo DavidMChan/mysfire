@@ -1,9 +1,9 @@
 import torch
 
-from swiftly import DataLoader
+from mysfire import DataLoader
 
 dataloader = DataLoader(
-    "/home/davidchan/Projects/swiftly/swiftly_scripts/test_s3.tsv",
+    "/home/davidchan/Projects/mysfire/mysfire_scripts/test_s3.tsv",
     batch_size=2,
     shuffle=False,
 )

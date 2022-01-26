@@ -1,28 +1,28 @@
-# Swiftly - Load data faster than light :)
+# Mysfire - Load data faster than light :)
 
-Swiftly takes the headache out of writing dataset and data loader code for pytorch (that you usually repeat time and
-time again). Swiftly encourages code reuse between projects when possible, and allows for easy extensibility when code
-reuse is impossible. Not only this, swiftly makes it easy to scale your datasets to hundreds of nodes, without thinking:
+Mysfire takes the headache out of writing dataset and data loader code for pytorch (that you usually repeat time and
+time again). Mysfire encourages code reuse between projects when possible, and allows for easy extensibility when code
+reuse is impossible. Not only this, mysfire makes it easy to scale your datasets to hundreds of nodes, without thinking:
 cloud storage support is built in (and easy to extend), making it a powerful tool when going from your local laptop to
 your public or private cloud.
 
 ## Installation
 
-Install this library with pip - `pip install swiftly`
+Install this library with pip - `pip install mysfire`
 
 ## Tour
 
-Each swiftly dataset is composed of three components:
+Each mysfire dataset is composed of three components:
 1. A definition describing the types of data (and preprocessing steps) in each column of your tabular file. Usually,
     this is just the header of your CSV or TSV file.
 2. A tabular data store (usually just a CSV or TSV file, but we can load tabular data from S3, SQL or any other
     extensible columnular store)
 3. A set of processors for processing and loading the data. For most common data types, these processors are built in,
     but we recognize that every dataset is different, so we make it as easy as possible to add new processors, or
-    download third party processors from the swiftly community hub.
+    download third party processors from the mysfire community hub.
 
 
-Let's look at a hello-world swiftly dataset:
+Let's look at a hello-world mysfire dataset:
 ```tsv
 # simple_dataset.tsv
 class:int   data:npy
@@ -34,7 +34,7 @@ class:int   data:npy
 That's it. Easy as defining the types of each of the objects and a name for each column as a header in a TSV file. The
 data is then super easy to load to your normal PyTorch workflow:
 ```py
-from swiftly import DataLoader
+from mysfire import DataLoader
 # Returns a standard PyTorch DataLoader, just replace the dataset with the TSV file!
 train_dataloader = DataLoader('simple_dataset.tsv', batch_size = 3, num_workers=12)
 for batch in train_dataloader:
@@ -98,13 +98,13 @@ Need to do NLP? Huggingface Tokenizers is built in
 # tokenization_s3_dataset.tsv
 class:int   labels:nlp.huggingface_tokenization(tokenizer_json="./tokenizer.json")
 0   Hello world!
-1   Welcome to the Swiftly data processors
+1   Welcome to the Mysfire data processors
 ```
 
 
 Working with PyTorch Lightning? LightningDataModules are built in:
 ```py
-from swiftly import LightningDataModule
+from mysfire import LightningDataModule
 datamodule = LightningDataModule(
     'train.tsv',
     'validate.tsv',
@@ -114,7 +114,7 @@ datamodule = LightningDataModule(
 
 Need to run something at test-time? All you need to do is build a OneShotLoader:
 ```py
-from swiftly import OneShotLoader
+from mysfire import OneShotLoader
 
 loader = OneShotLoader(like='train.tsv') # Initialize from a TSV
 loader = OneShotLoader(columns=["class:int", "data:npy"]) # or pass the columns directly!
@@ -126,9 +126,9 @@ data = loader.load_tsv_line(input_string) # Load using a single TSV line
 
 Need to load a custom datatype? Or extend the existing datatypes? It's super easy:
 ```py
-from swiftly import register_processor, Processor
+from mysfire import register_processor, Processor
 
-# Register the processor with swiftly before creating a dataset
+# Register the processor with mysfire before creating a dataset
 @register_processor
 class StringAppendProcessor(Processor):
 
@@ -155,8 +155,8 @@ class StringAppendProcessor(Processor):
 
 Want to add remote data loading to your processor? It's as easy as:
 ```py
-from swiftly import register_processor, S3Processor
-from swiftly.s3_utils import resolve_s3_or_local
+from mysfire import register_processor, S3Processor
+from mysfire.s3_utils import resolve_s3_or_local
 
 # Start by extending the S3 processor
 @register_processor
@@ -193,7 +193,7 @@ class S3FileProcessor(S3Processor):
 
 Need to register a lot of processors? Make use of the convenient function:
 ```py
-from swiftly import register_processor_directory
+from mysfire import register_processor_directory
 
 register_processor_directory('./plugins')
 ```

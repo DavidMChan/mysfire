@@ -4,7 +4,7 @@ from typing import Any, Dict, Generator, List, Mapping, Optional, Tuple
 import torch
 from sly.lex import LexError
 
-from .parser import SwiftlyHeaderLexer, SwiftlyHeaderParser  # type: ignore
+from .parser import MysfireHeaderLexer, MysfireHeaderParser  # type: ignore
 from .processors import PROCESSORS, Processor
 
 # Simple import guard to check if pytorch lightning is available before building some of the codebase
@@ -18,8 +18,8 @@ except ImportError:
 
 
 def build_processors(header_line: str) -> Generator[Tuple[str, Processor], None, None]:
-    lexer = SwiftlyHeaderLexer()
-    parser = SwiftlyHeaderParser()
+    lexer = MysfireHeaderLexer()
+    parser = MysfireHeaderParser()
     error = False
     try:
         processor_defs = parser.parse(lexer.tokenize(header_line))
