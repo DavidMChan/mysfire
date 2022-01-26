@@ -8,7 +8,17 @@ your public or private cloud.
 
 ## Installation
 
-Install this library with pip - `pip install mysfire`
+Install this library with pip - `pip install mysfire[all]`
+
+For a restricted subset of the data loading types, you can use different options:
+```bash
+pip install mysfire # Default options, only basic processors
+pip install mysfire[s3] # Include options for S3 connection
+pip install mysfire[image] # Include image processors
+pip install mysfire[video] # Include video processors
+pip install mysfire[h5py] # Include H5py processors
+pip install mysfire[nlp] # Include NLP processors
+```
 
 ## Tour
 
