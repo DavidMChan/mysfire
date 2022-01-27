@@ -1,3 +1,9 @@
+## 0.1.2 (2022-01-26)
+
+### Fix
+
+- **setup.cfg**: Recursive import build issues
+
 ## 0.1.1 (2022-01-26)
 
 ## 0.1.0 (2022-01-26)
