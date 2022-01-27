@@ -27,6 +27,7 @@ sections="FUTURE,STDLIB,THIRDPARTY,FIRSTPARTY,LOCALFOLDER"
 name = "cz_conventional_commits"
 version = "0.1.0"
 tag_format = "$version"
+version_files = [ "__init__.py" ]
 
 [build-system]
 requires = ["setuptools", "wheel"]
