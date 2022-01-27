@@ -27,7 +27,7 @@ sections="FUTURE,STDLIB,THIRDPARTY,FIRSTPARTY,LOCALFOLDER"
 name = "cz_conventional_commits"
 version = "0.1.1"
 tag_format = "$version"
-version_files = [ "mysfire/__init__.py" ]
+version_files = [ "mysfire/__init__.py", "setup.cfg" ]
 
 [build-system]
 requires = ["setuptools", "wheel"]
