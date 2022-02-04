@@ -1,7 +1,25 @@
 baseURL = 'https://mysfire.isx.ai/'
 languageCode = 'en-us'
+defaultContentLanguage = "en"
+
 title = 'Mysfire'
 theme = 'hugo-theme-learn'
+metaDataFormat = "yaml"
+defaultContentLanguageInSubdir= true
+
+
+[params]
+    editURL = "https://github.com/DavidMChan/mysfire/blob/main/docs/content/"
+    description = "Documentation for the Mysfire Python library"
+    author = "DIavid Chan"
+    disableNextPrev = true
+
 
 [outputs]
-home = ['HTML', 'RSS', 'JSON']
+    home = ['HTML', 'RSS', 'JSON']
+
+[[menu.shortcuts]]
+name = "<i class='fab fa-github'></i> Github repo"
+identifier = "ds"
+url = "https://github.com/DavidMChan/mysfire"
+weight = 10
