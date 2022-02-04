@@ -1,0 +1,7 @@
+baseURL = 'https://mysfire.isx.ai/'
+languageCode = 'en-us'
+title = 'Mysfire'
+theme = 'hugo-theme-learn'
+
+[outputs]
+home = ['HTML', 'RSS', 'JSON']
