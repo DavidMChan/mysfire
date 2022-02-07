@@ -8,4 +8,6 @@ pre = ""
 
 # Getting Started
 
-Mysfire is a tool designed to
+To get started, see the links below!
+
+[Installation]({{< ref "/getting-started/installation" >}} "How to install mysfire")

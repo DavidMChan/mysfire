@@ -2,6 +2,7 @@
 title: "Mysfire: Home"
 date: 2022-02-04T14:38:33-05:00
 draft: false
+weight: 6
 ---
 
 # Mysfire - Load data faster than light :)
