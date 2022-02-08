@@ -17,11 +17,11 @@ class Processor(Protocol):
         Protocol ([type]): [description]
     """
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args, **kwargs) -> None:  # type: ignore
         pass
 
     @classmethod
-    def typestr(cls):
+    def typestr(cls) -> str:
         raise NotImplementedError()
 
     def collate(self, batch: List[Any]) -> Any:
@@ -37,8 +37,8 @@ class S3Processor(Processor):
     """
 
     @classmethod
-    def typestr(cls):
-        return "__s3"
+    def typestr(cls) -> str:
+        raise NotImplementedError()
 
     def __init__(
         self,

@@ -29,7 +29,7 @@ class H5PyDatasetProcessor(Processor):
         self._pad = pad.lower() in ("yes", "true", "t", "1")
 
     @classmethod
-    def typestr(cls):
+    def typestr(cls) -> str:
         return "h5py.dataset"
 
     def collate(
@@ -61,7 +61,7 @@ class H5PyMapProcessor(Processor):
         self._pad = pad.lower() in ("yes", "true", "t", "1")
 
     @classmethod
-    def typestr(cls):
+    def typestr(cls) -> str:
         return "h5py.map"
 
     def collate(

@@ -2,8 +2,8 @@ from typing import Any, Dict, List, Optional
 
 import torch
 
-from ..torch_utils import padded_stack
-from ._processor import Processor
+from mysfire.torch_utils import padded_stack
+from mysfire.processors._processor import Processor
 
 HUGGINGFACE_TOKENIZERS_AVAILABLE = False
 try:
@@ -27,7 +27,8 @@ class HuggingfaceTokenizationProcessor(Processor):
             )
 
         # Load the tokenizer definitions from JSON file
-        print(tokenizer_json)
+        if tokenizer_json is None:
+            raise ValueError("tokenizer_json must be provided to Huggingface Tokenization processor")
         self._tokenizer = Tokenizer.from_file(tokenizer_json)
 
     @classmethod

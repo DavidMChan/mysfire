@@ -56,8 +56,8 @@ def load_to_bytes_if_filepath(data_or_file_path: Union[bytes, str, pathlib.Path]
     return data
 
 
-def test_aws_acl(acl_string):
-    if acl_string not in (
+def test_aws_acl(acl_string: str) -> bool:
+    if acl_string in {
         "private",
         "public-read",
         "public-read-write",
@@ -65,20 +65,20 @@ def test_aws_acl(acl_string):
         "aws-exec-read",
         "bucket-owner-read",
         "bucket-owner-full-control",
-    ):
-        raise ValueError(
-            "ACL string must be one of: ",
-            (
-                "private",
-                "public-read",
-                "public-read-write",
-                "authenticated-read",
-                "aws-exec-read",
-                "bucket-owner-read",
-                "bucket-owner-full-control",
-            ),
-        )
-    return True
+    }:
+        return True
+    raise ValueError(
+        "ACL string must be one of: ",
+        (
+            "private",
+            "public-read",
+            "public-read-write",
+            "authenticated-read",
+            "aws-exec-read",
+            "bucket-owner-read",
+            "bucket-owner-full-control",
+        ),
+    )
 
 
 class Connection:
@@ -118,7 +118,7 @@ class Connection:
         self._default_bucket = default_bucket
 
     # Utilities
-    def _set_to_default_bucket_if_none(self, bucket):
+    def _set_to_default_bucket_if_none(self, bucket: Optional[str]) -> str:
         if bucket is None:
             if self._default_bucket is None:
                 raise ValueError("Bucket must be specified if default bucket was not specified in connection.")
@@ -195,10 +195,10 @@ class Connection:
     # Context management
     # NOTE: This is primarily just to make people feel better about using the code. There's really no context in the
     # BOTO3 clients, since everything is done by REST API calls.
-    def __enter__(self):
+    def __enter__(self) -> "Connection":
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
         pass
 
     def resolve_s3_or_local(

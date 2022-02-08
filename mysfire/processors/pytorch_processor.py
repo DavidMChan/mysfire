@@ -27,7 +27,7 @@ class PtProcessor(S3Processor):
         self._pad = pad.lower() in ("yes", "true", "t", "1")
 
     @classmethod
-    def typestr(cls):
+    def typestr(cls) -> str:
         return "pt"
 
     def collate(
@@ -43,4 +43,4 @@ class PtProcessor(S3Processor):
 
     def __call__(self, value: str) -> Optional[torch.Tensor]:
         with resolve_s3_or_local(value, connection=self.s3_client) as f:
-            return torch.load(f, map_location=torch.device("cpu"))
+            return torch.load(f, map_location=torch.device("cpu"))  # type: ignore

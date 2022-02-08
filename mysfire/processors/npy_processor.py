@@ -28,7 +28,7 @@ class NpyProcessor(S3Processor):
         self._pad = pad.lower() in ("yes", "true", "t", "1")
 
     @classmethod
-    def typestr(cls):
+    def typestr(cls) -> str:
         return "npy"
 
     def collate(
@@ -70,7 +70,7 @@ class NpyIndexedFileProcessor(S3Processor):
         self._pad = pad.lower() in ("yes", "true", "t", "1")
 
     @classmethod
-    def typestr(cls):
+    def typestr(cls) -> str:
         return "npy.indexed_file"
 
     def collate(

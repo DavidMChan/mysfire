@@ -70,7 +70,7 @@ class VideoProcessor(Processor):
         self._audio_transform = ApplyTransformToKey(key="audio", transform=Compose([]))
 
     @classmethod
-    def typestr(cls):
+    def typestr(cls) -> str:
         return "video"
 
     def collate(

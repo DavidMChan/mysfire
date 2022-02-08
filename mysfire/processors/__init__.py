@@ -40,7 +40,7 @@ def register_processor_directory(directory: str) -> None:
             globals()[_plugin_name] = _plugin_module
 
     PROCESSORS.update({p.typestr(): p for p in Processor.__subclasses__()})  # type: ignore
-    PROCESSORS.update({p.typestr(): p for p in S3Processor.__subclasses__()})  # type: ignore
+    PROCESSORS.update({p.typestr(): p for p in S3Processor.__subclasses__()})
 
 
 register_processor_directory(os.path.dirname(__file__))

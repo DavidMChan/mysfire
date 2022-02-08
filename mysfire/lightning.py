@@ -30,7 +30,7 @@ if PYTORCH_LIGHTNING_AVAILABLE:
             num_workers: int = 0,
             pin_memory: bool = False,
         ):
-            super().__init__()
+            super().__init__()  # type: ignore
 
             self._train_filepath = train_filepath
             self._train_columns = train_columns
@@ -45,7 +45,7 @@ if PYTORCH_LIGHTNING_AVAILABLE:
             self._num_workers = num_workers
             self._pin_memory = pin_memory
 
-        def setup(self, stage=None):
+        def setup(self, stage: Optional[str] = None) -> None:
             if stage in ("fit", None):
                 self._train_ds = Dataset(self._train_filepath, self._train_columns) if self._train_filepath else None
                 self._val_ds = Dataset(self._val_filepath, self._val_columns) if self._val_filepath else None
@@ -53,7 +53,8 @@ if PYTORCH_LIGHTNING_AVAILABLE:
                 self._val_ds = Dataset(self._val_filepath, self._val_columns) if self._val_filepath else None
                 self._test_ds = Dataset(self._test_filepath, self._test_columns) if self._test_filepath else None
 
-        def train_dataloader(self):
+        def train_dataloader(self) -> torch.utils.data.DataLoader:
+            assert self._train_ds is not None, "No training dataset was provided"
             return torch.utils.data.DataLoader(
                 self._train_ds,
                 shuffle=True,
@@ -63,7 +64,8 @@ if PYTORCH_LIGHTNING_AVAILABLE:
                 pin_memory=self._pin_memory,
             )
 
-        def val_dataloader(self):
+        def val_dataloader(self) -> torch.utils.data.DataLoader:
+            assert self._val_ds is not None, "No validation dataset was provided"
             return torch.utils.data.DataLoader(
                 self._val_ds,
                 shuffle=True,
@@ -73,7 +75,8 @@ if PYTORCH_LIGHTNING_AVAILABLE:
                 pin_memory=self._pin_memory,
             )
 
-        def test_dataloader(self):
+        def test_dataloader(self) -> torch.utils.data.DataLoader:
+            assert self._test_ds is not None, "No test dataset was provided"
             return torch.utils.data.DataLoader(
                 self._test_ds,
                 shuffle=True,

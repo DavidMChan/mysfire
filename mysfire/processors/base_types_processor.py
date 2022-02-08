@@ -7,7 +7,7 @@ from ._processor import Processor
 
 class IntProcessor(Processor):
     @classmethod
-    def typestr(cls):
+    def typestr(cls) -> str:
         return "int"
 
     def collate(self, batch: List[Optional[int]]) -> torch.Tensor:
@@ -19,7 +19,7 @@ class IntProcessor(Processor):
 
 class FloatProcessor(Processor):
     @classmethod
-    def typestr(cls):
+    def typestr(cls) -> str:
         return "float"
 
     def collate(self, batch: List[Optional[float]]) -> torch.Tensor:
@@ -31,7 +31,7 @@ class FloatProcessor(Processor):
 
 class StringProcessor(Processor):
     @classmethod
-    def typestr(cls):
+    def typestr(cls) -> str:
         return "str"
 
     def collate(self, batch: List[Optional[str]]) -> List[str]:
@@ -46,7 +46,7 @@ class StringListProcessor(Processor):
         self._delimiter = delimiter
 
     @classmethod
-    def typestr(cls):
+    def typestr(cls) -> str:
         return "str.list"
 
     def collate(self, batch: List[Optional[List[str]]]) -> List[List[str]]:

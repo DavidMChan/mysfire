@@ -56,7 +56,7 @@ class ImageProcessor(Processor):
         self._pad = pad.lower() in ("yes", "true", "t", "1")
 
     @classmethod
-    def typestr(cls):
+    def typestr(cls) -> str:
         return "img"
 
     def collate(
