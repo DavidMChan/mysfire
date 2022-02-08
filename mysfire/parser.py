@@ -114,6 +114,18 @@ class MysfireHeaderParser(Parser):
     def argval(self, p):
         return p.ENV_VAR
 
+    @_("LPAREN clist RPAREN")
+    def argval(self, p):
+        return p.clist
+
+    @_("argval")
+    def clist(self, p):
+        return (p.argval,)
+
+    @_("argval COMMA clist")
+    def clist(self, p):
+        return (p.argval,) + p.clist
+
     def error(self, p):
         if p:
             raise SyntaxError(f"Header syntax error: unexpected '{p.value}' at line {p.lineno}, index {p.index}")
@@ -122,7 +134,7 @@ class MysfireHeaderParser(Parser):
 
 if __name__ == "__main__":
     _PARSER_TEST_DATA = r"""
-x:str	video:npy(s3_access_key="XXX",s3_secret_key="XXX",s3_endpoint=$ENDPOINT,value=1e-7)
+x:str	video:npy(s3_access_key="XXX",s3_secret_key=("XXX",2, 1e-10),s3_endpoint=$ENDPOINT,value=1e-7)
 """
 
     lexer = MysfireHeaderLexer()
