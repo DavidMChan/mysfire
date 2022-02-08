@@ -9,6 +9,7 @@ class MysfireHeaderLexer(Lexer):
     tokens = {
         NUMBER,
         FLOAT_NUMBER,
+        BOOL,
         LPAREN,
         RPAREN,
         COLON,
@@ -22,20 +23,19 @@ class MysfireHeaderLexer(Lexer):
     }
     ignore = " "
 
-    QSTRING = r'"(?:[^"\\]|\\.)*"'
-    IDENTIFIER = r"[a-zA-Z_][a-zA-Z0-9_\.]*"
     FLOAT_NUMBER = r"[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?"
-    ENV_VAR = r"\$[a-zA-Z_][a-zA-Z0-9_\.]*"
     NUMBER = r"\d+"
+    BOOL = r"true|false"
     LPAREN = r"\("
     RPAREN = r"\)"
-    # LQUOTE = r"\""
-    # RQUOTE = r"\""
+    QSTRING = r'"(?:[^"\\]|\\.)*"'
     COLON = r":"
     COMMA = r","
     EQUALS = r"="
     NEWLINE = r"\n"
     TAB = r"\t"
+    ENV_VAR = r"\$[a-zA-Z_][a-zA-Z0-9_\.]*"
+    IDENTIFIER = r"[a-zA-Z_][a-zA-Z0-9_\.]*"
 
     def FLOAT_NUMBER(self, t):
         t.value = float(t.value)
@@ -51,6 +51,10 @@ class MysfireHeaderLexer(Lexer):
 
     def ENV_VAR(self, t):
         t.value = os.environ.get(t.value[1:], None)
+        return t
+
+    def BOOL(self, t):
+        t.value = t.value.lower() == "true"
         return t
 
 
@@ -104,7 +108,7 @@ class MysfireHeaderParser(Parser):
 
     @_("NUMBER")
     def argval(self, p):
-        return p.VALUE
+        return p.NUMBER
 
     @_("QSTRING")
     def argval(self, p):
@@ -113,6 +117,10 @@ class MysfireHeaderParser(Parser):
     @_("ENV_VAR")
     def argval(self, p):
         return p.ENV_VAR
+
+    @_("BOOL")
+    def argval(self, p):
+        return p.BOOL
 
     @_("LPAREN clist RPAREN")
     def argval(self, p):
@@ -134,7 +142,7 @@ class MysfireHeaderParser(Parser):
 
 if __name__ == "__main__":
     _PARSER_TEST_DATA = r"""
-x:str	video:npy(s3_access_key="XXX",s3_secret_key=("XXX",2, 1e-10),s3_endpoint=$ENDPOINT,value=1e-7)
+x:str	video:npy(s3_access_key="XXX",s3_secret_key=("XXX",2,70, 1e-7),s3_endpoint=$ENDPOINT, value=true, option=false)
 """
 
     lexer = MysfireHeaderLexer()
@@ -142,6 +150,7 @@ x:str	video:npy(s3_access_key="XXX",s3_secret_key=("XXX",2, 1e-10),s3_endpoint=$
     for line in _PARSER_TEST_DATA.splitlines():
         if not line:
             continue
+        print(list(lexer.tokenize(line)))
         for processor in parser.parse(lexer.tokenize(line)):
             print(processor)
             print("--")
