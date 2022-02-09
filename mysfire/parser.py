@@ -23,7 +23,7 @@ class MysfireHeaderLexer(Lexer):
     }
     ignore = " "
 
-    FLOAT_NUMBER = r"[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?"
+    FLOAT_NUMBER = r"[+-]?(?=\d*[.eE])(?=\.?\d)\d*\.?\d*(?:[eE][+-]?\d+)?"
     NUMBER = r"\d+"
     BOOL = r"true|false"
     LPAREN = r"\("
