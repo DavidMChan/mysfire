@@ -38,7 +38,7 @@ class S3Processor(Processor):
 
     @classmethod
     def typestr(cls) -> str:
-        raise NotImplementedError()
+        return "__s3proc"
 
     def __init__(
         self,
