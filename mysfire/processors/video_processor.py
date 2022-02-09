@@ -123,7 +123,7 @@ class FixedSizeOutputVideoProcessor(Processor):
             - Only works with 1 mono audio channel
 
         Args:
-            video_shape (Tuple[int]): The shape of the video to produce as a tuple: (Time, Height, Width, Channels)
+            video_shape (Tuple[int]): The shape of the video to produce as a tuple: (Channels, Time, Height, Width)
             audio_shape (Tuple[int]): The shape of the audio to produce as a tuple: (Time, Channels)
         """
 
@@ -140,15 +140,15 @@ class FixedSizeOutputVideoProcessor(Processor):
 
         assert len(video_shape) == 4, "Video shape must be a tuple of length 4"
         assert len(audio_shape) == 2, "Audio shape must be a tuple of length 2"
-        assert video_shape[1] == video_shape[2], "Video height and width must be equal"
+        assert video_shape[2] == video_shape[3], "Video height and width must be equal"
         assert audio_shape[1] == 1, "Audio channels must be 1"
-        assert video_shape[-1] == 3, "Video must have 3 channels"
+        assert video_shape[0] == 3, "Video must have 3 channels"
 
         self._video_shape = video_shape
         self._audio_shape = audio_shape
 
-        self._uniform_temporal_subsample = video_shape[0]
-        self._uniform_crop = video_shape[1]
+        self._uniform_temporal_subsample = video_shape[1]
+        self._uniform_crop = video_shape[2]
         self._short_side_scale = short_side_scale
 
         video_transforms = [
@@ -178,9 +178,9 @@ class FixedSizeOutputVideoProcessor(Processor):
         ],
     ]:
         return {
-            "video": torch.stack([b["video"] for b in batch], dim=0),
+            "frames": torch.stack([b["frames"] for b in batch], dim=0),
             "audio": torch.stack([b["audio"] for b in batch], dim=0),
-            "video_sequence_mask": torch.stack([b["video_sequence_mask"] for b in batch], dim=0),
+            "frames_sequence_mask": torch.stack([b["frames_sequence_mask"] for b in batch], dim=0),
             "audio_sequence_mask": torch.stack([b["audio_sequence_mask"] for b in batch], dim=0),
         }
 
@@ -206,12 +206,25 @@ class FixedSizeOutputVideoProcessor(Processor):
             audio_data = torch.zeros(*self._audio_shape)
             audio_sequence_mask = torch.zeros(audio_data.shape[0], dtype=torch.bool)
 
-        assert self._video_shape == frames.shape, "Internal error: Video shape must be {}".format(self._video_shape)
-        assert self._audio_shape == audio_data.shape, "Internal Error: Audio shape must be {}".format(self._audio_shape)
+        # Pad the audio to match the expected fixed length
+        if len(audio_data) > self._audio_shape[0]:
+            audio_data = audio_data[: self._audio_shape[0]]
+        elif len(audio_data) < self._audio_shape[0]:
+            audio_data = torch.cat([audio_data, torch.zeros(self._audio_shape[0] - len(audio_data))])
+
+        # Unstack the audio to a single channel
+        audio_data = audio_data.view(self._audio_shape[0], -1)
+
+        assert self._video_shape == frames.shape, "Internal error: Video shape must be {} (It's {})".format(
+            self._video_shape, frames.shape
+        )
+        assert self._audio_shape == audio_data.shape, "Internal Error: Audio shape must be {}  (It's {})".format(
+            self._audio_shape, audio_data.shape
+        )
 
         return {
-            "video": frames,
+            "frames": frames,
             "audio": audio_data,
-            "video_sequence_mask": video_sequence_mask,
+            "frames_sequence_mask": video_sequence_mask,
             "audio_sequence_mask": audio_sequence_mask,
         }
