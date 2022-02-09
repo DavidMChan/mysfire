@@ -68,7 +68,7 @@ if PYTORCH_LIGHTNING_AVAILABLE:
             assert self._val_ds is not None, "No validation dataset was provided"
             return torch.utils.data.DataLoader(
                 self._val_ds,
-                shuffle=True,
+                shuffle=False,
                 collate_fn=self._val_ds.collate_fn,
                 batch_size=self._val_batch_size,
                 num_workers=self._num_workers,
@@ -79,7 +79,7 @@ if PYTORCH_LIGHTNING_AVAILABLE:
             assert self._test_ds is not None, "No test dataset was provided"
             return torch.utils.data.DataLoader(
                 self._test_ds,
-                shuffle=True,
+                shuffle=False,
                 collate_fn=self._test_ds.collate_fn,
                 batch_size=self._test_batch_size,
                 num_workers=self._num_workers,
