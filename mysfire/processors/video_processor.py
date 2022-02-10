@@ -18,7 +18,7 @@ except ImportError:
 
 TORCHVISION_AVAILABLE = False
 try:
-    from torchvision.transforms import Compose, Lambda
+    from torchvision.transforms import Compose, Lambda, Normalize
 
     TORCHVISION_AVAILABLE = True
 except ImportError:
@@ -235,6 +235,12 @@ class FixedSizeOutputVideoProcessor(Processor):
             ShortSideScale(self._short_side_scale) if self._short_side_scale else Lambda(lambda x: x),
             Lambda(lambda x: uniform_crop_fn(x, self._uniform_crop, 1)),
             Lambda(lambda x: x / 255.0),  # Always normalize the video
+            Lambda(lambda x: x.permute(1, 0, 2, 3)),
+            Normalize(
+                mean=(0.43216, 0.394666, 0.37645),
+                std=(0.22803, 0.22145, 0.216989),
+            ),
+            Lambda(lambda x: x.permute(1, 0, 2, 3)),
         ]
 
         self._video_transform = Compose(video_transforms)
@@ -290,6 +296,9 @@ class FixedSizeOutputVideoProcessor(Processor):
 
         # Unstack the audio to a single channel
         audio_data = audio_data.view(self._audio_shape[0], -1)
+
+        # Filter NaNs in audio data
+        audio_data = torch.nan_to_num(audio_data)
 
         assert self._video_shape == frames.shape, "Internal error: Video shape must be {} (It's {})".format(
             self._video_shape, frames.shape
