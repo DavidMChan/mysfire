@@ -143,7 +143,7 @@ class VocabTokenizationProcessor(Processor):
             sequence_mask = torch.cat([torch.ones(len(tokens)), torch.zeros(self._max_sequence_length - len(tokens))])
 
         # Convert tokens to integers
-        numerized = torch.IntTensor([self._vocab.get(t, self._vocab[self._unk_token]) for t in tokens])
+        numerized = torch.LongTensor([self._vocab.get(t, self._vocab[self._unk_token]) for t in tokens])
 
         return {
             "text": tokens,

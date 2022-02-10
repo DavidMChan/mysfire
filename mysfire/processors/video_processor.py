@@ -1,6 +1,7 @@
 from typing import Dict, List, Optional, Union, Tuple
 
 import torch
+import pathlib
 
 from ._array_utils import stack_arrays_as_dict
 from ._processor import Processor
@@ -20,6 +21,14 @@ try:
     from torchvision.transforms import Compose, Lambda
 
     TORCHVISION_AVAILABLE = True
+except ImportError:
+    pass
+
+PYAV_AVAILABLE = False
+try:
+    import av
+
+    PYAV_AVAILABLE = True
 except ImportError:
     pass
 
@@ -107,6 +116,77 @@ class VideoProcessor(Processor):
         }
 
 
+def _decode_av(input_: av.container.Container) -> Tuple[torch.Tensor, torch.Tensor]:
+    # Set up pyav for fast decoding
+    input_.streams.video[0].thread_type = "AUTO"
+    input_.streams.audio[0].thread_type = "AUTO"
+
+    # Allocate memory for the video/audio
+    _video = torch.empty(
+        input_.streams.video[0].frames,
+        input_.streams.video[0].height,
+        input_.streams.video[0].width,
+        3,
+        dtype=torch.uint8,
+    )
+    _audio = torch.empty(
+        input_.streams.audio[0].frames, 1024, dtype=torch.float32
+    )  # It remains to be seen if this is set at 1024
+
+    audio_idx, video_idx = 0, 0
+    for frame in input_.decode(video=0, audio=0):
+        if isinstance(frame, av.audio.frame.AudioFrame):
+            base_frame = torch.from_numpy(frame.to_ndarray()).mean(dim=0)  # Mix down audio to mono
+            _audio[audio_idx] = torch.nn.functional.pad(base_frame, (0, 1024 - base_frame.shape[0]))
+            audio_idx += 1
+        else:
+            _video[video_idx] = torch.from_numpy(frame.to_ndarray(format="rgb24"))
+            video_idx += 1
+
+    return _video.permute(3, 0, 1, 2), _audio.reshape(-1)
+
+
+def _decode_v(input_: av.container.Container) -> torch.Tensor:
+    input_.streams.video[0].thread_type = "AUTO"
+    _video = torch.empty(
+        input_.streams.video[0].frames,
+        input_.streams.video[0].height,
+        input_.streams.video[0].width,
+        3,
+        dtype=torch.uint8,
+    )
+    for idx, frame in enumerate(input_.decode(video=0)):
+        _video[idx] = torch.from_numpy(frame.to_ndarray(format="rgb24"))
+
+    return _video.permute(3, 0, 1, 2)
+
+
+def _decode_a(input_: av.container.Container) -> torch.Tensor:
+    input_.streams.audio[0].thread_type = "AUTO"
+    _audio = torch.empty(
+        input_.streams.audio[0].frames, 1024, dtype=torch.float32
+    )  # It remains to be seen if this is set at 1024
+    for idx, frame in enumerate(input_.decode(audio=0)):
+        base_frame = torch.from_numpy(frame.to_ndarray()).mean(dim=0)  # Mix down audio to mono
+        _audio[idx] = torch.nn.functional.pad(base_frame, (0, 1024 - base_frame.shape[0]))
+    return _audio.reshape(-1)
+
+
+def load_mp4_video(file_path: Union[pathlib.Path, str]) -> Tuple[Optional[torch.Tensor], Optional[torch.Tensor]]:
+    # Open and read the video/audio file
+    input_ = av.open(str(file_path), "r")
+    video, audio = None, None
+    if len(input_.streams.audio) > 0 and len(input_.streams.video) > 0:
+        video, audio = _decode_av(input_)
+    elif len(input_.streams.video) > 0:
+        video = _decode_v(input_)
+    elif len(input_.streams.audio) > 0:
+        audio = _decode_a(input_)
+    input_.close()
+
+    return video, audio
+
+
 class FixedSizeOutputVideoProcessor(Processor):
     def __init__(
         self,
@@ -128,10 +208,8 @@ class FixedSizeOutputVideoProcessor(Processor):
         """
 
         # Guards for optional dependencies
-        if not PYTORCH_VIDEO_AVAILABLE:
-            raise ImportError(
-                "pytorchvideo is not available. Please install pytorchvideo with `pip install pytorchvideo`"
-            )
+        if not PYAV_AVAILABLE:
+            raise ImportError("py-av is not available. Please install py-av with `pip install av`")
         if not TORCHVISION_AVAILABLE:
             raise ImportError("torchvision is not available. Please install torchvision with `pip install torchvision`")
 
@@ -153,13 +231,14 @@ class FixedSizeOutputVideoProcessor(Processor):
 
         video_transforms = [
             UniformTemporalSubsample(self._uniform_temporal_subsample),
+            Lambda(lambda x: x.float()),
             ShortSideScale(self._short_side_scale) if self._short_side_scale else Lambda(lambda x: x),
             Lambda(lambda x: uniform_crop_fn(x, self._uniform_crop, 1)),
             Lambda(lambda x: x / 255.0),  # Always normalize the video
         ]
 
-        self._video_transform = ApplyTransformToKey(key="video", transform=Compose(video_transforms))
-        self._audio_transform = ApplyTransformToKey(key="audio", transform=Compose([]))
+        self._video_transform = Compose(video_transforms)
+        self._audio_transform = Compose([])
 
     @classmethod
     def typestr(cls) -> str:
@@ -186,31 +265,28 @@ class FixedSizeOutputVideoProcessor(Processor):
 
     def __call__(self, value: str) -> Dict[str, torch.Tensor]:
         # Load the video
-        video = EncodedVideo.from_path(value, decode_audio=True)
-        video_data = video.get_clip(0, video.duration)
-        frames = self._video_transform(video_data)["video"]
+        video, audio = load_mp4_video(value)
 
-        # Load the audio
-        audio_data = None
-        if "audio" in video_data and video_data["audio"] is not None:
-            audio_data = self._audio_transform(video_data)["audio"]
-
-        # Build the sequence masks
-        video_sequence_mask = torch.ones(self._video_shape[0], dtype=torch.bool)
-        audio_sequence_mask = torch.ones(self._audio_shape[0], dtype=torch.bool)
-
-        if frames is None:
-            frames = torch.zeros(*self._video_shape)
-            video_sequence_mask = torch.zeros(frames.shape[0], dtype=torch.bool)
-        if audio_data is None:
-            audio_data = torch.zeros(*self._audio_shape)
-            audio_sequence_mask = torch.zeros(audio_data.shape[0], dtype=torch.bool)
+        frames = self._video_transform(video) if video is not None else torch.zeros(self._video_shape)
+        audio_data = self._audio_transform(audio) if audio is not None else torch.zeros(self._audio_shape)
 
         # Pad the audio to match the expected fixed length
         if len(audio_data) > self._audio_shape[0]:
             audio_data = audio_data[: self._audio_shape[0]]
         elif len(audio_data) < self._audio_shape[0]:
             audio_data = torch.cat([audio_data, torch.zeros(self._audio_shape[0] - len(audio_data))])
+
+        # Build the sequence masks
+        video_sequence_mask = (
+            torch.ones(self._video_shape[1], dtype=torch.bool)
+            if video is not None
+            else torch.zeros(frames.shape[1], dtype=torch.bool)
+        )
+        audio_sequence_mask = (
+            torch.ones(self._audio_shape[0], dtype=torch.bool)
+            if audio is not None
+            else torch.zeros(audio_data.shape[0], dtype=torch.bool)
+        )
 
         # Unstack the audio to a single channel
         audio_data = audio_data.view(self._audio_shape[0], -1)
