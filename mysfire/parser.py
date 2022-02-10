@@ -93,10 +93,6 @@ class MysfireHeaderParser(Parser):
     def args(self, p):
         return p.argument
 
-    @_("argument COMMA")
-    def args(self, p):
-        return p.argument
-
     @_("argument COMMA args")
     def args(self, p):
         return dict(list(p.argument.items()) + list(p.args.items()))
@@ -150,7 +146,7 @@ class MysfireHeaderParser(Parser):
 
 if __name__ == "__main__":
     _PARSER_TEST_DATA = r"""
-x:str	video:npy(s3_access_key="XXX",s3_secret_key=("XXX",2,7.0, 1e-7),s3_endpoint=$ENDPOINT, value=true, option=false, data=(7,))
+video:video.fixed_size(video_shape=(3, 10, 224, 224), audio_shape=(80000, 1), short_side_scale=256)	video_id:str	class_id:int	class_name:nlp.vocab_tokenization(vocab_json="/data/davidchan/k600/mysfire_tokens.json", max_sequence_length=10)
 """
 
     lexer = MysfireHeaderLexer()
