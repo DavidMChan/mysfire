@@ -11,7 +11,7 @@ from ._processor import S3Processor
 class NpyProcessor(S3Processor):
     def __init__(
         self,
-        pad: str = "false",
+        pad: bool = False,
         s3_endpoint: Optional[str] = None,
         s3_access_key: Optional[str] = None,
         s3_secret_key: Optional[str] = None,
@@ -25,7 +25,7 @@ class NpyProcessor(S3Processor):
             s3_region=s3_region,
         )
 
-        self._pad = pad.lower() in ("yes", "true", "t", "1")
+        self._pad = pad
 
     @classmethod
     def typestr(cls) -> str:
@@ -51,7 +51,7 @@ class NpyIndexedFileProcessor(S3Processor):
     def __init__(
         self,
         filepath: str,
-        pad: str = "false",
+        pad: bool = False,
         s3_endpoint: Optional[str] = None,
         s3_access_key: Optional[str] = None,
         s3_secret_key: Optional[str] = None,
@@ -67,7 +67,8 @@ class NpyIndexedFileProcessor(S3Processor):
 
         with resolve_s3_or_local(filepath, connection=self.s3_client) as f:
             self._data = np.load(f)
-        self._pad = pad.lower() in ("yes", "true", "t", "1")
+
+        self._pad = pad
 
     @classmethod
     def typestr(cls) -> str:
