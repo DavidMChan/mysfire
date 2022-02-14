@@ -56,6 +56,11 @@ class Dataset(torch.utils.data.Dataset):
         for key, processor in self._processors:
             self.vars.add_processor(key, processor)
 
+        # Run pre-initilization on the processors (for computing global values)
+        for i, (_, processor) in enumerate(self._processors):
+            if hasattr(processor, "pre_init"):
+                processor.pre_init([s[i] for s in samples])  # type: ignore
+
     def __len__(self) -> int:
         return len(self._samples)
 

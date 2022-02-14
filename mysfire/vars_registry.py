@@ -14,7 +14,7 @@ class VarProxy:
             return self._proxy_fns[__name]()  # type: ignore
         raise ValueError(
             f"""{__name} is not a variable exported by {self._processor.__class__.__name__}."""
-            f""" Valid variables are: {', '.join(self._proxies.keys())}"""
+            f""" Valid variables are: {', '.join(self._proxy_fns.keys())}"""
         )
 
 
