@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Tuple
 
 import numpy as np
 import torch
@@ -23,17 +23,12 @@ except ImportError:
     pass
 
 
-def _int_or_tuple_from_string(resize: str) -> Union[int, tuple]:
-    elems = tuple(map(int, resize.split("x")))
-    return elems[0] if len(elems) == 1 else elems
-
-
 class ImageProcessor(Processor):
     def __init__(
         self,
-        resize: Optional[str] = None,
+        resize: Optional[Union[int, Tuple[int, ...]]] = None,
         resize_interpolation: str = "bilinear",
-        pad: str = "false",
+        pad: bool = False,
     ) -> None:
 
         if not PIL_AVAILABLE:
@@ -43,8 +38,7 @@ class ImageProcessor(Processor):
         if TORCHVISION_AVAILABLE:
             transforms = []
             if resize is not None:
-                resize_value = _int_or_tuple_from_string(resize)
-                transforms.append(torchvision.transforms.Resize(resize_value, interpolation=resize_interpolation))
+                transforms.append(torchvision.transforms.Resize(resize, interpolation=resize_interpolation))
             transforms.append(torchvision.transforms.ToTensor())
             self._transform = torchvision.transforms.Compose(transforms)
         elif resize is not None:
@@ -53,7 +47,7 @@ class ImageProcessor(Processor):
                 " Please install torchvision with `pip install torchvision`"
             )
 
-        self._pad = pad.lower() in ("yes", "true", "t", "1")
+        self._pad = pad
 
     @classmethod
     def typestr(cls) -> str:

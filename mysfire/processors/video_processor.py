@@ -44,10 +44,10 @@ except ImportError:
 class VideoProcessor(Processor):
     def __init__(
         self,
-        uniform_temporal_subsample: Optional[str] = None,
-        uniform_crop: Optional[str] = None,
-        short_side_scale: Optional[str] = None,
-        pad: str = "false",
+        uniform_temporal_subsample: Optional[int] = None,
+        uniform_crop: Optional[int] = None,
+        short_side_scale: Optional[int] = None,
+        pad: bool = False,
     ):
 
         # Guards for optional dependencies
@@ -61,10 +61,10 @@ class VideoProcessor(Processor):
         # if not TORCHAUDIO_AVAILABLE:
         #     raise ImportError("torchaudio is not available. Please install torchaudio with `pip install torchaudio`")
 
-        self._uniform_temporal_subsample = int(uniform_temporal_subsample) if uniform_temporal_subsample else None
-        self._uniform_crop = int(uniform_crop) if uniform_crop else None
-        self._short_side_scale = int(short_side_scale) if short_side_scale else None
-        self._pad = pad.lower() in ("yes", "true", "t", "1")
+        self._uniform_temporal_subsample = uniform_temporal_subsample
+        self._uniform_crop = uniform_crop
+        self._short_side_scale = short_side_scale
+        self._pad = pad
 
         video_transforms = []
         if self._uniform_temporal_subsample is not None:

@@ -16,7 +16,7 @@ except ImportError:
 
 
 class H5PyDatasetProcessor(Processor):
-    def __init__(self, filepath: str, keys: Optional[str] = None, pad: str = "false"):
+    def __init__(self, filepath: str, keys: Optional[str] = None, pad: bool = False):
 
         if not H5PY_AVAILABLE:
             raise ImportError("H5Py is not available. Please install H5Py with `pip install h5py`")
@@ -26,7 +26,7 @@ class H5PyDatasetProcessor(Processor):
             for k in keys.split("/"):
                 self._file = self._file[k]
 
-        self._pad = pad.lower() in ("yes", "true", "t", "1")
+        self._pad = pad
 
     @classmethod
     def typestr(cls) -> str:
