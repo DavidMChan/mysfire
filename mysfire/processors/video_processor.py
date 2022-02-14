@@ -176,13 +176,17 @@ def load_mp4_video(file_path: Union[pathlib.Path, str]) -> Tuple[Optional[torch.
     # Open and read the video/audio file
     input_ = av.open(str(file_path), "r")
     video, audio = None, None
-    if len(input_.streams.audio) > 0 and len(input_.streams.video) > 0:
-        video, audio = _decode_av(input_)
-    elif len(input_.streams.video) > 0:
-        video = _decode_v(input_)
-    elif len(input_.streams.audio) > 0:
-        audio = _decode_a(input_)
-    input_.close()
+    try:
+        if len(input_.streams.audio) > 0 and len(input_.streams.video) > 0:
+            video, audio = _decode_av(input_)
+        elif len(input_.streams.video) > 0:
+            video = _decode_v(input_)
+        elif len(input_.streams.audio) > 0:
+            audio = _decode_a(input_)
+    except Exception as ex:
+        print(ex)
+    finally:
+        input_.close()
 
     return video, audio
 
