@@ -92,6 +92,10 @@ class VocabTokenizationProcessor(Processor):
         self._max_sequence_length = max_sequence_length
         self._vocab_size = max(self._vocab.values()) + 1
 
+    @property
+    def vocab_size(self) -> int:
+        return self._vocab_size
+
     @classmethod
     def typestr(cls) -> str:
         return "nlp.vocab_tokenization"

@@ -6,6 +6,7 @@ from sly.lex import LexError
 
 from .parser import MysfireHeaderLexer, MysfireHeaderParser  # type: ignore
 from .processors import PROCESSORS, Processor
+from .vars_registry import VariableRegistry
 
 
 def build_processors(header_line: str) -> Generator[Tuple[str, Processor], None, None]:
@@ -25,7 +26,8 @@ def build_processors(header_line: str) -> Generator[Tuple[str, Processor], None,
     for output_key, proc_type, args in processor_defs or []:
         if proc_type not in PROCESSORS:
             raise ValueError(f"Unknown column type: {proc_type}")
-        yield (output_key, PROCESSORS[proc_type](**(args or {})))
+        processor = PROCESSORS[proc_type](**(args or {}))
+        yield (output_key, processor)
 
 
 def resolve_samples(filepath: str) -> Tuple[List[List[str]], Optional[List[str]]]:
@@ -48,6 +50,11 @@ class Dataset(torch.utils.data.Dataset):
         if self._columns is None:
             raise RuntimeError("Dataset {} has no column headers".format(self._filepath))
         self._processors = list(build_processors("\t".join(columns or [])))
+
+        # Initialize the variables
+        self.vars = VariableRegistry()
+        for key, processor in self._processors:
+            self.vars.add_processor(key, processor)
 
     def __len__(self) -> int:
         return len(self._samples)
