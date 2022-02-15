@@ -1,3 +1,24 @@
+## 0.3.0 (2022-02-15)
+
+### Feat
+
+- **mysfire**: Changed collate to flatten dictionaries at top level
+- **mysfire/processors**: Adapted all processors to take compatible types directly
+- **mysfire/processors/npy_processor.py**: Changed numpy processor to use boolean parsing
+- **mysfire/processors**: Added pre_init function for processors to initialize global data-specific variables
+- **mysfire/vars_registry.py**: Added ability to access properties from the dataset class
+
+### Fix
+
+- **mysfire/processors/video_processor.py**: Catch errors in video processor (return None, None)
+- **mysfire/dataset.py**: Fixed issue with memory leaks in torch dataloader
+- **mysfire/parser.py**: Fixed Reduce/Reduce conflict in grammar
+- **mysfire/parser.py**: Added the ability to insert 1-element tuples in the header
+
+### Perf
+
+- **mysfire/processors/video_processor.py**: Added code to filter NaN values from audio data
+
 ## 0.2.0 (2022-02-09)
 
 ### Fix
