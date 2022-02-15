@@ -16,6 +16,8 @@ def stack_arrays_as_dict(
 ]:
     """Stack a list of optional tensors into either a single tensor or a set of ragged tensors.
 
+    NOTE: Should be used within the collate function, otherwise "__root__" doesn't really make sense.
+
     Args:
         batch (List[Optional[torch.Tensor]]): The batch of tensors to stack.
         pad (bool, optional): If the tensors should be stacked as a ragged set, or as a single tensor. Defaults to True.
@@ -37,7 +39,7 @@ def stack_arrays_as_dict(
     if all([x is None or x.shape == proto.shape for x in batch]):
         if pad:
             return {
-                "data": torch.stack([x if x is not None else torch.zeros_like(proto_s[0]) for x in batch], dim=0),
+                "__root__": torch.stack([x if x is not None else torch.zeros_like(proto_s[0]) for x in batch], dim=0),
                 "seqlen": torch.tensor([x.shape[0] if x is not None else 0 for x in batch]),
             }
         return torch.stack([x if x is not None else torch.zeros_like(proto_s[0]) for x in batch], dim=0)
@@ -47,9 +49,9 @@ def stack_arrays_as_dict(
             # Pad the first axis, and return sequence lengths
             tensors = [x if x is not None else torch.zeros(*proto.shape[1:]).to(proto.dtype) for x in batch]
             d, s = padded_stack(tensors)
-            return {"data": d, "seqlen": s}
+            return {"__root__": d, "seqlen": s}
 
     # TODO: Correct the return types on this data
     if pad:
-        return {"data": batch, "seqlen": torch.tensor([x.shape[0] if x is not None else 0 for x in batch])}
+        return {"__root__": batch, "seqlen": torch.tensor([x.shape[0] if x is not None else 0 for x in batch])}
     return batch

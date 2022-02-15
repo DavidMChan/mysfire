@@ -36,6 +36,16 @@ def resolve_samples(filepath: str) -> Tuple[List[List[str]], Optional[List[str]]
     return samples[1:], samples[0]
 
 
+def _flatten_dicts(dictionary: Dict[str, Any]) -> Dict[str, Any]:
+    flat_dict = {}
+    for key, value in dictionary.items():
+        if isinstance(value, dict):
+            flat_dict.update({key if k == "__root__" else f"{key}.{k}": v for k, v in value.items()})
+        else:
+            flat_dict[key] = value
+    return flat_dict
+
+
 class Dataset(torch.utils.data.Dataset):
     def __init__(
         self,
@@ -68,7 +78,9 @@ class Dataset(torch.utils.data.Dataset):
         return {k: v(r.as_py()) for (k, v), r in zip(self._processors, self._samples[index])}
 
     def collate_fn(self, batch: List[Mapping[str, Any]]) -> Dict[str, Any]:
-        return {key: self._processors[i][1].collate([v[key] for v in batch]) for i, key in enumerate(batch[0].keys())}
+        return _flatten_dicts(
+            {key: self._processors[i][1].collate([v[key] for v in batch]) for i, key in enumerate(batch[0].keys())}
+        )
 
     def get_processors(self) -> List[Tuple[str, Processor]]:
         return self._processors
@@ -80,4 +92,5 @@ class DataLoader(torch.utils.data.DataLoader):
         _active_dataset = Dataset(filepath, columns)
         if "collate_fn" not in kwargs:
             kwargs["collate_fn"] = _active_dataset.collate_fn
+
         super().__init__(_active_dataset, **kwargs)
