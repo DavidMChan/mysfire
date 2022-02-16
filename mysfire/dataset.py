@@ -61,6 +61,15 @@ class Dataset(torch.utils.data.Dataset):
             raise RuntimeError("Dataset {} has no column headers".format(self._filepath))
         self._processors = list(build_processors("\t".join(columns or [])))
 
+        # Pre-validate the samples
+        for i, sample in enumerate(samples):
+            if len(sample) != len(self._processors):
+                raise RuntimeError(
+                    "Line {} in dataset {} has {} columns, but {} columns were expected".format(
+                        i + 1, filepath, len(sample), len(self._processors)
+                    )
+                )
+
         # Initialize the variables
         self.vars = VariableRegistry()
         for key, processor in self._processors:
@@ -68,6 +77,8 @@ class Dataset(torch.utils.data.Dataset):
 
         # Run pre-initilization on the processors (for computing global values)
         for i, (_, processor) in enumerate(self._processors):
+            if hasattr(processor, "validate_samples"):
+                processor.validate_samples([s[i] for s in samples])  # type: ignore
             if hasattr(processor, "pre_init"):
                 processor.pre_init([s[i] for s in samples])  # type: ignore
 
