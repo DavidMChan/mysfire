@@ -1,6 +1,8 @@
-from typing import Any, Dict, Generator, List, Mapping, Optional, Tuple
+from typing import Any, Dict, Generator, List, Mapping, Optional, Tuple, Set
 
 import torch
+import random
+import logging
 import pyarrow as pa
 from sly.lex import LexError
 
@@ -47,14 +49,13 @@ def _flatten_dicts(dictionary: Dict[str, Any]) -> Dict[str, Any]:
 
 class Dataset(torch.utils.data.Dataset):
     def __init__(
-        self,
-        filepath: str,
-        columns: Optional[List[str]] = None,
+        self, filepath: str, columns: Optional[List[str]] = None, resample_on_processor_exception: bool = True
     ) -> None:
         self._filepath = filepath
         samples, columns = resolve_samples(self._filepath)
         self._columns = pa.array(columns) if columns else None
         self._samples = pa.array(samples)
+        self._resample_on_exception = resample_on_processor_exception
 
         if self._columns is None:
             raise RuntimeError("Dataset {} has no column headers".format(self._filepath))
@@ -74,7 +75,18 @@ class Dataset(torch.utils.data.Dataset):
         return len(self._samples)
 
     def __getitem__(self, index: int) -> Mapping[str, Any]:
-        return {k: v(r.as_py()) for (k, v), r in zip(self._processors, self._samples[index])}
+        tested_indices: Set[int] = set()
+        while len(tested_indices) < len(self._samples):
+            try:
+                return {k: v(r.as_py()) for (k, v), r in zip(self._processors, self._samples[index])}
+            except Exception as e:
+                if not self._resample_on_exception:
+                    raise e from e
+                tested_indices.add(index)
+                index = random.choice(tuple(set(range(len(self._samples))) - tested_indices))
+                logging.warning(f"Resampling row {index} due to data-loading exception: {e}")
+
+        raise RuntimeError("Could not load data for any row!")
 
     def collate_fn(self, batch: List[Mapping[str, Any]]) -> Dict[str, Any]:
         return _flatten_dicts(
@@ -87,8 +99,14 @@ class Dataset(torch.utils.data.Dataset):
 
 class DataLoader(torch.utils.data.DataLoader):
     # Easy class for managing data loaders
-    def __init__(self, filepath: str, columns: Optional[List[str]] = None, **kwargs: Any) -> None:
-        _active_dataset = Dataset(filepath, columns)
+    def __init__(
+        self,
+        filepath: str,
+        columns: Optional[List[str]] = None,
+        resample_on_processor_exception: bool = True,
+        **kwargs: Any,
+    ) -> None:
+        _active_dataset = Dataset(filepath, columns, resample_on_processor_exception)
         if "collate_fn" not in kwargs:
             kwargs["collate_fn"] = _active_dataset.collate_fn
 
