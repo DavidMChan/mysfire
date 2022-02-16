@@ -37,13 +37,12 @@ def resolve_samples(filepath: str) -> Tuple[List[List[str]], Optional[List[str]]
 
 
 def _flatten_dicts(dictionary: Dict[str, Any]) -> Dict[str, Any]:
-    flat_dict = {}
-    for key, value in dictionary.items():
+    for key, value in list(dictionary.items()):
         if isinstance(value, dict):
-            flat_dict.update({key if k == "__root__" else f"{key}.{k}": v for k, v in value.items()})
-        else:
-            flat_dict[key] = value
-    return flat_dict
+            dictionary.pop(key)
+            for kk, vv in value.items():
+                dictionary[key if kk == "__root__" else f"{key}.{kk}"] = vv
+    return dictionary
 
 
 class Dataset(torch.utils.data.Dataset):
