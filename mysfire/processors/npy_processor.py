@@ -1,9 +1,8 @@
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Any
 
 import numpy as np
 import torch
 
-from ..s3_utils import resolve_s3_or_local
 from ._array_utils import stack_arrays_as_dict
 from ._processor import S3Processor
 
@@ -12,18 +11,9 @@ class NpyProcessor(S3Processor):
     def __init__(
         self,
         pad: bool = False,
-        s3_endpoint: Optional[str] = None,
-        s3_access_key: Optional[str] = None,
-        s3_secret_key: Optional[str] = None,
-        s3_region: Optional[str] = None,
+        **kwargs: Any,
     ) -> None:
-
-        super().__init__(
-            s3_endpoint=s3_endpoint,
-            s3_access_key=s3_access_key,
-            s3_secret_key=s3_secret_key,
-            s3_region=s3_region,
-        )
+        super().__init__(**kwargs)
 
         self._pad = pad
 
@@ -43,7 +33,7 @@ class NpyProcessor(S3Processor):
         return stack_arrays_as_dict(batch, self._pad)
 
     def __call__(self, value: str) -> Optional[torch.Tensor]:
-        with resolve_s3_or_local(value, connection=self.s3_client) as f:
+        with self.resolve_to_local(value) as f:
             return torch.from_numpy(np.load(f))
 
 
@@ -52,20 +42,12 @@ class NpyIndexedFileProcessor(S3Processor):
         self,
         filepath: str,
         pad: bool = False,
-        s3_endpoint: Optional[str] = None,
-        s3_access_key: Optional[str] = None,
-        s3_secret_key: Optional[str] = None,
-        s3_region: Optional[str] = None,
+        **kwargs: Any,
     ) -> None:
 
-        super().__init__(
-            s3_endpoint=s3_endpoint,
-            s3_access_key=s3_access_key,
-            s3_secret_key=s3_secret_key,
-            s3_region=s3_region,
-        )
+        super().__init__(**kwargs)
 
-        with resolve_s3_or_local(filepath, connection=self.s3_client) as f:
+        with self.resolve_to_local(filepath) as f:
             self._data = np.load(f)
 
         self._pad = pad

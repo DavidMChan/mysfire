@@ -172,7 +172,7 @@ class StringAppendProcessor(Processor):
 Want to add remote data loading to your processor? It's as easy as:
 ```py
 from mysfire import register_processor, S3Processor
-from mysfire.s3_utils import resolve_s3_or_local
+from mysfire.s3_utils import resolve_to_local
 
 # Start by extending the S3 processor
 @register_processor
@@ -199,8 +199,8 @@ class S3FileProcessor(S3Processor):
 
     def __call__(self, value: str) -> Optional[str]:
         try:
-            # Use resolve_s3_or_local to fetch any file in S3 to a local filepath (or use a local file path if it's local)
-            with resolve_s3_or_local(value, connection=self.s3_client) as f:
+            # Use resolve_to_local to fetch any file in S3 to a local filepath (or use a local file path if it's local)
+            with self.resolve_to_local(value) as f:
                 with open(f, 'r') as fp:
                     return f
         except Exception as ex:

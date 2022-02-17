@@ -1,6 +1,7 @@
 from typing import Any, List, Optional, Protocol
 
-from ..s3_utils import Connection
+from ..cloud_utils import S3Connection, resolve_to_local_path
+from contextlib import _GeneratorContextManager
 
 
 class Processor(Protocol):
@@ -58,7 +59,7 @@ class S3Processor(Processor):
             assert self._s3_access_key is not None, "S3 access key is required"
             assert self._s3_secret_key is not None, "S3 secret key is required"
 
-            self._s3_client = Connection(
+            self._s3_client = S3Connection(
                 access_key=self._s3_access_key,
                 secret_key=self._s3_secret_key,
                 endpoint=self._s3_endpoint,
@@ -66,5 +67,18 @@ class S3Processor(Processor):
             )
 
     @property
-    def s3_client(self) -> Optional[Connection]:
+    def s3_client(self) -> Optional[S3Connection]:
         return self._s3_client
+
+    def resolve_to_local(
+        self,
+        path: str,
+        retry_download: Optional[int] = None,
+        backoff: float = 2.0,
+    ) -> _GeneratorContextManager[str]:
+        return resolve_to_local_path(
+            path,
+            connection=self._s3_client,
+            retry_download=retry_download,
+            backoff=backoff,
+        )

@@ -12,12 +12,9 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-
-import logging
 import pathlib
 import tempfile
 import time
-import warnings
 from contextlib import _GeneratorContextManager, contextmanager
 from typing import Any, Generator, Optional, Union
 
@@ -81,7 +78,7 @@ def test_aws_acl(acl_string: str) -> bool:
     )
 
 
-class Connection:
+class S3Connection:
     """Connection Object for managing S3 connections in boto."""
 
     def __init__(
@@ -90,7 +87,7 @@ class Connection:
         secret_key: str,
         endpoint: Optional[str] = None,
         region: Optional[str] = None,
-        tls: bool = False,
+        tls: bool = True,
         default_bucket: str = None,
     ):
 
@@ -98,22 +95,18 @@ class Connection:
             raise ImportError("AWS S3 is not available. Please install the AWS API with `pip install boto3`")
 
         # Construct the endpoint if not passed in
-        if endpoint is None:
-            if region is None:
-                # No region/endpoints specified
-                raise NotImplementedError(
-                    "Cannot specify no endpoint, and no region for connection."
-                    " Please specify at least a region (for AWS)."
-                )
-            # Region is specified
-            endpoint = f"{'https://' if tls else 'http://'}s3.{region}.amazonaws.com"
-        elif tls:
-            warnings.warn("TLS is specified and endpoint is specified. Make sure that your endpoint uses https://")
+        endpoint = endpoint or f"{'https://' if tls else 'http://'}s3{f'.{region}' if region else ''}.amazonaws.com"
 
         # Construct the boto3 client
         self._s3_client = boto3.client(
             "s3", aws_access_key_id=access_key, aws_secret_access_key=secret_key, endpoint_url=endpoint
         )
+
+        # Try listing the buckets to make sure the credentials are valid
+        try:
+            self._s3_client.list_buckets()
+        except Exception as e:
+            raise RuntimeError(f"Error initializaing S3 connection: {e}") from e
 
         self._default_bucket = default_bucket
 
@@ -195,29 +188,29 @@ class Connection:
     # Context management
     # NOTE: This is primarily just to make people feel better about using the code. There's really no context in the
     # BOTO3 clients, since everything is done by REST API calls.
-    def __enter__(self) -> "Connection":
+    def __enter__(self) -> "S3Connection":
         return self
 
     def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
         pass
 
-    def resolve_s3_or_local(
+    def resolve_to_local(
         self, uri: str, retry_download: Optional[int] = None, backoff: float = 2.0
-    ) -> _GeneratorContextManager:
-        return resolve_s3_or_local(uri, retry_download, backoff, connection=self)
+    ) -> _GeneratorContextManager[str]:
+        return resolve_to_local_path(uri, retry_download, backoff, connection=self)
 
 
 @contextmanager
-def resolve_s3_or_local(
+def resolve_to_local_path(
     uri: str,
     retry_download: Optional[int] = None,
     backoff: float = 2.0,
-    connection: Optional[Connection] = None,
+    connection: Optional[S3Connection] = None,
     access_key: Optional[str] = None,
     secret_key: Optional[str] = None,
     endpoint: Optional[str] = None,
     region: Optional[str] = None,
-    tls: bool = False,
+    tls: bool = True,
     default_bucket: str = None,
 ) -> Generator[str, None, None]:
 
@@ -225,18 +218,21 @@ def resolve_s3_or_local(
     if uri.startswith("s3://"):
         bucket, _, key = uri[5:].partition("/")
         # Download the file
-        assert connection or (access_key is not None and secret_key is not None), "Connection must be fully specified"
         with (
-            connection or Connection(access_key, secret_key, endpoint, region, tls, default_bucket)  # type: ignore
+            connection or S3Connection(access_key, secret_key, endpoint, region, tls, default_bucket)  # type: ignore
         ) as conn:
             with tempfile.NamedTemporaryFile() as f:
                 for i in range(retry_download or 1):  # Retry with backoff
+                    last_error = None
                     try:
                         conn.download(key, f.name, bucket)
+                        yield f.name
+                        break
                     except Exception as e:
-                        logging.warning(f"Failed to load {uri}: {e}")
+                        last_error = e
                         time.sleep(backoff ** i)
+                else:
+                    raise FileNotFoundError(f"Could not download {uri} to local file. Last error: {last_error}")
 
-                    yield f.name
     else:
         yield uri

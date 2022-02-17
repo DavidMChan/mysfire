@@ -1,10 +1,10 @@
-from typing import Dict, List, Optional, Union, Tuple
+from typing import Dict, List, Optional, Union, Tuple, Any
 
 import torch
 import pathlib
 
 from ._array_utils import stack_arrays_as_dict
-from ._processor import Processor
+from ._processor import Processor, S3Processor
 
 PYTORCH_VIDEO_AVAILABLE = False
 try:
@@ -191,12 +191,13 @@ def load_mp4_video(file_path: Union[pathlib.Path, str]) -> Tuple[Optional[torch.
     return video, audio
 
 
-class FixedSizeOutputVideoProcessor(Processor):
+class FixedSizeOutputVideoProcessor(S3Processor):
     def __init__(
         self,
         video_shape: Tuple[int, int, int, int],
         audio_shape: Tuple[int, int],
         short_side_scale: Optional[int] = None,
+        **kwargs: Any,
     ):
         """Specifies a fixed output shape for the video. If the video (or audio) doesn't conform to this output shape,
         it is padded with zeros.
@@ -216,6 +217,7 @@ class FixedSizeOutputVideoProcessor(Processor):
             raise ImportError("py-av is not available. Please install py-av with `pip install av`")
         if not TORCHVISION_AVAILABLE:
             raise ImportError("torchvision is not available. Please install torchvision with `pip install torchvision`")
+        super().__init__(**kwargs)
 
         # if not TORCHAUDIO_AVAILABLE:
         #     raise ImportError("torchaudio is not available. Please install torchaudio with `pip install torchaudio`")
@@ -275,7 +277,8 @@ class FixedSizeOutputVideoProcessor(Processor):
 
     def __call__(self, value: str) -> Dict[str, torch.Tensor]:
         # Load the video
-        video, audio = load_mp4_video(value)
+        with self.resolve_to_local(value) as local_path:
+            video, audio = load_mp4_video(local_path)
 
         frames = self._video_transform(video) if video is not None else torch.zeros(self._video_shape)
         audio_data = self._audio_transform(audio) if audio is not None else torch.zeros(self._audio_shape)
