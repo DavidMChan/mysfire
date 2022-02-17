@@ -17,6 +17,7 @@ import tempfile
 import time
 from contextlib import _GeneratorContextManager, contextmanager
 from typing import Any, Generator, Optional, Union
+from abc import ABC
 
 import filetype
 
@@ -25,6 +26,14 @@ try:
     import boto3
 
     BOTO3_AVAILABLE = True
+except ImportError:
+    pass
+
+GCS_AVAILABLE = False
+try:
+    from google.cloud import storage
+
+    GCS_AVAILABLE = True
 except ImportError:
     pass
 
@@ -78,7 +87,69 @@ def test_aws_acl(acl_string: str) -> bool:
     )
 
 
-class S3Connection:
+class _Connection(ABC):
+    """
+    A simple protocol which defines the methods that a cloud storage connection must implement.
+    """
+
+    _default_bucket: Optional[str] = None
+
+    def list_buckets(
+        self,
+    ) -> Generator[str, None, None]:
+        raise NotImplementedError()
+
+    def list_files(self, bucket: Optional[str] = None) -> Generator[str, None, None]:
+        raise NotImplementedError()
+
+    def upload(
+        self,
+        data_or_file_path: Any,
+        key: str,
+        bucket: Optional[str] = None,
+        mimetype: Optional[str] = None,
+        permissions: str = "private",
+    ) -> None:
+        raise NotImplementedError()
+
+    def download(self, key: str, download_path: str, bucket: Optional[str] = None, chunk_size: int = 1024) -> None:
+        raise NotImplementedError()
+
+    def get(self, key: str, bucket: Optional[str] = None) -> bytes:
+        raise NotImplementedError()
+
+    def delete(self, key: str, bucket: Optional[str] = None, version_id: Optional[str] = None) -> None:
+        raise NotImplementedError()
+
+    def copy(
+        self, from_key: str, to_key: str, from_bucket: Optional[str] = None, to_bucket: Optional[str] = None
+    ) -> None:
+        raise NotImplementedError()
+
+    def move(self, from_key: str, to_key: str, from_bucket: Optional[str], to_bucket: Optional[str]) -> None:
+        raise NotImplementedError()
+
+    def __enter__(self) -> "_Connection":
+        return self
+
+    def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
+        pass
+
+    def resolve_to_local(
+        self, uri: str, retry_download: Optional[int] = None, backoff: float = 2.0
+    ) -> _GeneratorContextManager[str]:
+        return resolve_to_local_path(uri, retry_download, backoff, connection=self)
+
+    # Utilities
+    def _set_to_default_bucket_if_none(self, bucket: Optional[str]) -> str:
+        if bucket is None:
+            if self._default_bucket is None:
+                raise ValueError("Bucket must be specified if default bucket was not specified in connection.")
+            bucket = self._default_bucket
+        return bucket
+
+
+class S3Connection(_Connection):
     """Connection Object for managing S3 connections in boto."""
 
     def __init__(
@@ -93,6 +164,8 @@ class S3Connection:
 
         if not BOTO3_AVAILABLE:
             raise ImportError("AWS S3 is not available. Please install the AWS API with `pip install boto3`")
+
+        super().__init__()
 
         # Construct the endpoint if not passed in
         endpoint = endpoint or f"{'https://' if tls else 'http://'}s3{f'.{region}' if region else ''}.amazonaws.com"
@@ -109,14 +182,6 @@ class S3Connection:
             raise RuntimeError(f"Error initializaing S3 connection: {e}") from e
 
         self._default_bucket = default_bucket
-
-    # Utilities
-    def _set_to_default_bucket_if_none(self, bucket: Optional[str]) -> str:
-        if bucket is None:
-            if self._default_bucket is None:
-                raise ValueError("Bucket must be specified if default bucket was not specified in connection.")
-            bucket = self._default_bucket
-        return bucket
 
     # Bucket Operations
     def list_buckets(
@@ -185,27 +250,35 @@ class S3Connection:
         self.copy(from_key=from_key, to_key=to_key, from_bucket=from_bucket, to_bucket=to_bucket)
         self.delete(key=from_key, bucket=from_bucket)
 
-    # Context management
-    # NOTE: This is primarily just to make people feel better about using the code. There's really no context in the
-    # BOTO3 clients, since everything is done by REST API calls.
-    def __enter__(self) -> "S3Connection":
-        return self
 
-    def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
-        pass
+class GCSConnection(_Connection):
+    def __init__(
+        self,
+        default_bucket: str = None,
+    ):
+        if not GCS_AVAILABLE:
+            raise ImportError(
+                "Google Cloud Storage is not available. Please install the GCS "
+                "API with `pip install google-cloud-storage`"
+            )
 
-    def resolve_to_local(
-        self, uri: str, retry_download: Optional[int] = None, backoff: float = 2.0
-    ) -> _GeneratorContextManager[str]:
-        return resolve_to_local_path(uri, retry_download, backoff, connection=self)
+        super().__init__()
+
+        self._client = storage.Client()
+        self._default_bucket = default_bucket
+
+    def download(self, key: str, download_path: str, bucket: Optional[str] = None, chunk_size: int = 1024) -> None:
+        bucket = self._set_to_default_bucket_if_none(bucket)
+        blob = self._client.bucket.blob(key)
+        blob.download_to_filename(download_path)
 
 
 @contextmanager
-def resolve_to_local_path(
+def _resolve_to_local_path_s3(
     uri: str,
     retry_download: Optional[int] = None,
     backoff: float = 2.0,
-    connection: Optional[S3Connection] = None,
+    connection: Optional[_Connection] = None,
     access_key: Optional[str] = None,
     secret_key: Optional[str] = None,
     endpoint: Optional[str] = None,
@@ -213,26 +286,89 @@ def resolve_to_local_path(
     tls: bool = True,
     default_bucket: str = None,
 ) -> Generator[str, None, None]:
+    bucket, _, key = uri[5:].partition("/")
+    # Download the file
+    with (
+        connection or S3Connection(access_key, secret_key, endpoint, region, tls, default_bucket)  # type: ignore
+    ) as conn:
+        with tempfile.NamedTemporaryFile() as f:
+            for i in range(retry_download or 1):  # Retry with backoff
+                last_error = None
+                try:
+                    conn.download(key, f.name, bucket)
+                    yield f.name
+                    break
+                except Exception as e:
+                    last_error = e
+                    time.sleep(backoff ** i)
+            else:
+                raise FileNotFoundError(f"Could not download {uri} to local file. Last error: {last_error}")
 
-    # Code to acquire resource, e.g.:
+
+@contextmanager
+def _resolve_to_local_path_gcs(
+    uri: str,
+    retry_download: Optional[int] = None,
+    backoff: float = 2.0,
+    connection: Optional[_Connection] = None,
+    default_bucket: str = None,
+) -> Generator[str, None, None]:
+
+    bucket, _, key = uri[6:].partition("/")
+    # Download the file
+    with (connection or GCSConnection(default_bucket=default_bucket)) as conn:
+        with tempfile.NamedTemporaryFile() as f:
+            for i in range(retry_download or 1):  # Retry with backoff
+                last_error = None
+                try:
+                    conn.download(key, f.name, bucket)
+                    yield f.name
+                    break
+                except Exception as e:
+                    last_error = e
+                    time.sleep(backoff ** i)
+            else:
+                raise FileNotFoundError(f"Could not download {uri} to local file. Last error: {last_error}")
+
+
+@contextmanager
+def _resolve_to_local_path_local(uri: str) -> Generator[str, None, None]:
+    yield uri
+
+
+def resolve_to_local_path(
+    uri: str,
+    retry_download: Optional[int] = None,
+    backoff: float = 2.0,
+    connection: Optional[_Connection] = None,
+    access_key: Optional[str] = None,
+    secret_key: Optional[str] = None,
+    endpoint: Optional[str] = None,
+    region: Optional[str] = None,
+    tls: bool = True,
+    bucket: str = None,
+) -> _GeneratorContextManager[str]:
+
     if uri.startswith("s3://"):
-        bucket, _, key = uri[5:].partition("/")
-        # Download the file
-        with (
-            connection or S3Connection(access_key, secret_key, endpoint, region, tls, default_bucket)  # type: ignore
-        ) as conn:
-            with tempfile.NamedTemporaryFile() as f:
-                for i in range(retry_download or 1):  # Retry with backoff
-                    last_error = None
-                    try:
-                        conn.download(key, f.name, bucket)
-                        yield f.name
-                        break
-                    except Exception as e:
-                        last_error = e
-                        time.sleep(backoff ** i)
-                else:
-                    raise FileNotFoundError(f"Could not download {uri} to local file. Last error: {last_error}")
+        return _resolve_to_local_path_s3(
+            uri,
+            retry_download,
+            backoff,
+            connection,
+            access_key,
+            secret_key,
+            endpoint,
+            region,
+            tls,
+            bucket,
+        )
+    elif uri.startswith("gcs://"):
+        return _resolve_to_local_path_gcs(
+            uri,
+            retry_download,
+            backoff,
+            connection,
+            bucket,
+        )
 
-    else:
-        yield uri
+    return _resolve_to_local_path_local(uri)
