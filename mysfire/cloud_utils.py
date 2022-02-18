@@ -137,7 +137,7 @@ class _Connection(ABC):
 
     def resolve_to_local(
         self, uri: str, retry_download: Optional[int] = None, backoff: float = 2.0
-    ) -> _GeneratorContextManager[str]:
+    ) -> _GeneratorContextManager:
         return resolve_to_local_path(uri, retry_download, backoff, connection=self)
 
     # Utilities
@@ -347,7 +347,7 @@ def resolve_to_local_path(
     region: Optional[str] = None,
     tls: bool = True,
     bucket: str = None,
-) -> _GeneratorContextManager[str]:
+) -> _GeneratorContextManager:
 
     if uri.startswith("s3://"):
         return _resolve_to_local_path_s3(

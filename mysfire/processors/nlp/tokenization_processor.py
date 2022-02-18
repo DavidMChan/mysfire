@@ -7,7 +7,7 @@ import json
 import torch
 
 from mysfire.torch_utils import padded_stack
-from mysfire.processors._processor import Processor
+from mysfire.processors._processor import Processor, S3Processor
 
 HUGGINGFACE_TOKENIZERS_AVAILABLE = False
 try:
@@ -57,13 +57,14 @@ class HuggingfaceTokenizationProcessor(Processor):
         }
 
 
-class VocabTokenizationProcessor(Processor):
+class VocabTokenizationProcessor(S3Processor):
     def __init__(
         self,
         vocab_json: str,
         max_sequence_length: int,
         unk_token: Optional[str] = None,
         pad_token: Optional[str] = None,
+        **kwargs: Any,
     ) -> None:
         """Simple whitepsace-based tokenization using a JSON which maps strings to integers.
 
@@ -72,9 +73,12 @@ class VocabTokenizationProcessor(Processor):
             max_sequence_length (int): Maximum sequence length.
         """
 
+        super().__init__(**kwargs)
+
         # Load the tokenizer definitions from JSON file
-        with open(vocab_json, "r") as f:
-            self._vocab = json.load(f)
+        with self.resolve_to_local(vocab_json) as jf:
+            with open(jf, "r") as f:
+                self._vocab = json.load(f)
 
         # Handle some special token definitions
         if unk_token is None:

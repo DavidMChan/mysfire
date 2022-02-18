@@ -9,6 +9,7 @@ from sly.lex import LexError
 from .parser import MysfireHeaderLexer, MysfireHeaderParser  # type: ignore
 from .processors import PROCESSORS, Processor
 from .vars_registry import VariableRegistry
+from .cloud_utils import resolve_to_local_path
 
 
 def build_processors(header_line: str) -> Generator[Tuple[str, Processor], None, None]:
@@ -33,8 +34,10 @@ def build_processors(header_line: str) -> Generator[Tuple[str, Processor], None,
 
 
 def resolve_samples(filepath: str) -> Tuple[List[List[str]], Optional[List[str]]]:
-    with open(filepath, "r") as f:
-        samples = [line.strip().split("\t") for line in f]
+    # TODO: Allow passing connection details through to this function
+    with resolve_to_local_path(filepath) as f:
+        with open(f, "r") as f:
+            samples = [line.strip().split("\t") for line in f]
     return samples[1:], samples[0]
 
 

@@ -75,7 +75,7 @@ class S3Processor(Processor):
         path: str,
         retry_download: Optional[int] = None,
         backoff: float = 2.0,
-    ) -> _GeneratorContextManager[str]:
+    ) -> _GeneratorContextManager:
         return resolve_to_local_path(
             path,
             connection=self._s3_client,
