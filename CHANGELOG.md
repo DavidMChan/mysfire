@@ -1,3 +1,9 @@
+## 0.4.1 (2022-02-18)
+
+### Fix
+
+- **setup.cfg**: Fix pyarrow version bug
+
 ## 0.4.0 (2022-02-18)
 
 ### Fix
