@@ -1,3 +1,9 @@
+## 0.4.3 (2022-02-18)
+
+### Fix
+
+- **mysfire/processors/nlp**: Fix an issue where mysfire does not have tokenization processors
+
 ## 0.4.2 (2022-02-18)
 
 ### Fix
