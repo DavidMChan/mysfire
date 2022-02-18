@@ -1,3 +1,9 @@
+## 0.4.2 (2022-02-18)
+
+### Fix
+
+- **setup.cfg**: More fixes for versions not available in pypi
+
 ## 0.4.1 (2022-02-18)
 
 ### Fix
