@@ -1,3 +1,22 @@
+## 0.4.0 (2022-02-18)
+
+### Fix
+
+- **setup.cfg**: Fixed dependencies
+- **mysfire/cloud_utils.py**: Fixed issues with typing in cloud utils
+- **mysfire/vars_registry.py**: Made Dataset class pickleable with cloudpickle
+- **mysfire/dataset**: Fix small memory leak in _flatten_dicts
+
+### Feat
+
+- **mysfire/cloud_utils.py**: Added rudimentary GCS connection
+- **mysfire/dataset.py**: Added light-weight validation of sample data to dataset
+- **mysfire/dataset.py**: Added ability to resample from dataset on processor exceptions
+
+### Refactor
+
+- **mysfire/cloud_utils.py**: Refactored underlying S3 tools so that they are easier to swap with GCS
+
 ## 0.3.0 (2022-02-15)
 
 ### Feat
