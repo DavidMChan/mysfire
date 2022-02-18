@@ -13,13 +13,22 @@
 #    limitations under the License.
 
 import pathlib
-import tempfile
+
+# import tempfile
 import time
 from contextlib import _GeneratorContextManager, contextmanager
 from typing import Any, Generator, Optional, Union
 from abc import ABC
 
 import filetype
+
+# Import memory_tempfile if available, or use tempfile if not
+try:
+    from memory_tempfile import MemoryTempfile
+
+    tempfile = MemoryTempfile(fallback=True)
+except ImportError:
+    import tempfile  # type: ignore
 
 BOTO3_AVAILABLE = False
 try:
