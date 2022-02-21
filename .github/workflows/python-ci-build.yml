@@ -1,15 +1,13 @@
-name: pypi_upload
+name: ci_build
 
 on:
   push:
-    tags:
-      - '**'
-      - '!**-rc**'
-      - '!**nightly**'
+    branch:
+      - 'main'
 
 jobs:
   build:
-    name: PyPI Upload
+    name: Build
     runs-on: ubuntu-latest
 
     steps:
@@ -19,19 +17,24 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: '3.8'
-
+          cache: 'pip'
+          cache-dependency-path: 'setup.cfg'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade --disable-pip-version-check pip
+          python -m pip install .[dev]
       - name: Install latest pip, build, twine
         run: |
           python -m pip install --upgrade --disable-pip-version-check pip
           python -m pip install --upgrade build twine
-      - name: Build wheel and source distributions
+      - name: Run tests
+        run: |
+          pytest
+      - name: Build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           python -m build
-      - name: Upload to PyPI via Twine
-        env:
-          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
-        run: |
-          twine upload --verbose -u '__token__' dist/*
       - name: Archive production artifacts
         uses: actions/upload-artifact@v2
         with:
