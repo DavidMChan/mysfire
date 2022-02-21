@@ -163,8 +163,8 @@ class S3Connection(_Connection):
 
     def __init__(
         self,
-        access_key: str,
-        secret_key: str,
+        access_key: Optional[str] = None,
+        secret_key: Optional[str] = None,
         endpoint: Optional[str] = None,
         region: Optional[str] = None,
         tls: bool = True,
@@ -297,9 +297,7 @@ def _resolve_to_local_path_s3(
 ) -> Generator[str, None, None]:
     bucket, _, key = uri[5:].partition("/")
     # Download the file
-    with (
-        connection or S3Connection(access_key, secret_key, endpoint, region, tls, default_bucket)  # type: ignore
-    ) as conn:
+    with (connection or S3Connection(access_key, secret_key, endpoint, region, tls, default_bucket)) as conn:
         with tempfile.NamedTemporaryFile() as f:
             for i in range(retry_download or 1):  # Retry with backoff
                 last_error = None

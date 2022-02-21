@@ -56,6 +56,8 @@ class Dataset(torch.utils.data.Dataset):
     ) -> None:
         self._filepath = filepath
         samples, columns = resolve_samples(self._filepath)
+        logging.info(f"Loaded {len(samples)} samples from {self._filepath}")
+
         self._columns = pa.array(columns) if columns else None
         self._samples = pa.array(samples)
         self._resample_on_exception = resample_on_processor_exception
@@ -63,6 +65,7 @@ class Dataset(torch.utils.data.Dataset):
         if self._columns is None:
             raise RuntimeError("Dataset {} has no column headers".format(self._filepath))
         self._processors = list(build_processors("\t".join(columns or [])))
+        logging.info(f"Loaded {len(self._processors)} processors")
 
         # Pre-validate the samples
         for i, sample in enumerate(samples):
@@ -79,11 +82,14 @@ class Dataset(torch.utils.data.Dataset):
             self.vars.add_processor(key, processor)
 
         # Run pre-initilization on the processors (for computing global values)
+        logging.info("Running pre-initialization on processors")
         for i, (_, processor) in enumerate(self._processors):
             if hasattr(processor, "validate_samples"):
                 processor.validate_samples([s[i] for s in samples])  # type: ignore
             if hasattr(processor, "pre_init"):
                 processor.pre_init([s[i] for s in samples])  # type: ignore
+
+        logging.info("Dataset loaded successfully")
 
     def __len__(self) -> int:
         return len(self._samples)
@@ -92,7 +98,7 @@ class Dataset(torch.utils.data.Dataset):
         tested_indices: Set[int] = set()
         while len(tested_indices) < len(self._samples):
             try:
-                return {k: v(r.as_py()) for (k, v), r in zip(self._processors, self._samples[index])}
+                return {k: v.load(r.as_py()) for (k, v), r in zip(self._processors, self._samples[index])}
             except Exception as e:
                 if not self._resample_on_exception:
                     raise e from e

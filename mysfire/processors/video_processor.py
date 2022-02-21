@@ -4,12 +4,11 @@ import torch
 import pathlib
 
 from ._array_utils import stack_arrays_as_dict
-from ._processor import Processor, S3Processor
+from ._processor import S3Processor
 
 PYTORCH_VIDEO_AVAILABLE = False
 try:
-    from pytorchvideo.data.encoded_video import EncodedVideo
-    from pytorchvideo.transforms import ApplyTransformToKey, ShortSideScale, UniformTemporalSubsample
+    from pytorchvideo.transforms import ShortSideScale, UniformTemporalSubsample
     from pytorchvideo.transforms.functional import uniform_crop as uniform_crop_fn
 
     PYTORCH_VIDEO_AVAILABLE = True
@@ -41,81 +40,6 @@ except ImportError:
 #     pass
 
 
-class VideoProcessor(Processor):
-    def __init__(
-        self,
-        uniform_temporal_subsample: Optional[int] = None,
-        uniform_crop: Optional[int] = None,
-        short_side_scale: Optional[int] = None,
-        pad: bool = False,
-    ):
-
-        # Guards for optional dependencies
-        if not PYTORCH_VIDEO_AVAILABLE:
-            raise ImportError(
-                "pytorchvideo is not available. Please install pytorchvideo with `pip install pytorchvideo`"
-            )
-        if not TORCHVISION_AVAILABLE:
-            raise ImportError("torchvision is not available. Please install torchvision with `pip install torchvision`")
-
-        # if not TORCHAUDIO_AVAILABLE:
-        #     raise ImportError("torchaudio is not available. Please install torchaudio with `pip install torchaudio`")
-
-        self._uniform_temporal_subsample = uniform_temporal_subsample
-        self._uniform_crop = uniform_crop
-        self._short_side_scale = short_side_scale
-        self._pad = pad
-
-        video_transforms = []
-        if self._uniform_temporal_subsample is not None:
-            video_transforms.append(UniformTemporalSubsample(self._uniform_temporal_subsample))
-        if self._short_side_scale is not None:
-            video_transforms.append(ShortSideScale(self._short_side_scale))
-        if self._uniform_crop is not None:
-            video_transforms.append(Lambda(lambda x: uniform_crop_fn(x, self._uniform_crop, 1)))
-        video_transforms.append(Lambda(lambda x: x / 255.0))  # Always normalize the video
-
-        self._video_transform = ApplyTransformToKey(key="video", transform=Compose(video_transforms))
-        self._audio_transform = ApplyTransformToKey(key="audio", transform=Compose([]))
-
-    @classmethod
-    def typestr(cls) -> str:
-        return "video"
-
-    def collate(
-        self, batch: List[Dict[str, Optional[torch.Tensor]]]
-    ) -> Dict[
-        str,
-        Optional[
-            Union[
-                torch.Tensor,
-                Dict[str, Union[Optional[torch.Tensor], Optional[List[Optional[torch.Tensor]]]]],
-                List[Optional[torch.Tensor]],
-            ]
-        ],
-    ]:
-        return {
-            "video": stack_arrays_as_dict([b["video"] for b in batch], pad=self._pad),
-            "audio": stack_arrays_as_dict([b["audio"] for b in batch], pad=self._pad),
-        }
-
-    def __call__(self, value: str) -> Dict[str, Optional[torch.Tensor]]:
-        # Load the video
-        video = EncodedVideo.from_path(value, decode_audio=True)
-        video_data = video.get_clip(0, video.duration)
-        frames = self._video_transform(video_data)["video"]
-
-        # Load the audio
-        audio_data = None
-        if "audio" in video_data and video_data["audio"] is not None:
-            audio_data = self._audio_transform(video_data)["audio"]
-
-        return {
-            "video": frames,
-            "audio": audio_data,
-        }
-
-
 def _decode_av(input_: av.container.Container) -> Tuple[torch.Tensor, torch.Tensor]:
     # Set up pyav for fast decoding
     input_.streams.video[0].thread_type = "AUTO"
@@ -143,7 +67,7 @@ def _decode_av(input_: av.container.Container) -> Tuple[torch.Tensor, torch.Tens
             _video[video_idx] = torch.from_numpy(frame.to_ndarray(format="rgb24"))
             video_idx += 1
 
-    return _video.permute(3, 0, 1, 2), _audio.reshape(-1)
+    return _video.permute(3, 0, 1, 2), _audio.reshape(-1).clip(0, 1)
 
 
 def _decode_v(input_: av.container.Container) -> torch.Tensor:
@@ -169,7 +93,7 @@ def _decode_a(input_: av.container.Container) -> torch.Tensor:
     for idx, frame in enumerate(input_.decode(audio=0)):
         base_frame = torch.from_numpy(frame.to_ndarray()).mean(dim=0)  # Mix down audio to mono
         _audio[idx] = torch.nn.functional.pad(base_frame, (0, 1024 - base_frame.shape[0]))
-    return _audio.reshape(-1)
+    return _audio.reshape(-1).clip(0, 1)
 
 
 def load_mp4_video(file_path: Union[pathlib.Path, str]) -> Tuple[Optional[torch.Tensor], Optional[torch.Tensor]]:
@@ -189,6 +113,82 @@ def load_mp4_video(file_path: Union[pathlib.Path, str]) -> Tuple[Optional[torch.
         input_.close()
 
     return video, audio
+
+
+class VideoProcessor(S3Processor):
+    def __init__(
+        self,
+        uniform_temporal_subsample: Optional[int] = None,
+        uniform_crop: Optional[int] = None,
+        short_side_scale: Optional[int] = None,
+        pad: bool = False,
+        **kwargs: Any,
+    ):
+
+        # Guards for optional dependencies
+        if not TORCHVISION_AVAILABLE:
+            raise ImportError("torchvision is not available. Please install torchvision with `pip install torchvision`")
+
+        # if not TORCHAUDIO_AVAILABLE:
+        #     raise ImportError("torchaudio is not available. Please install torchaudio with `pip install torchaudio`")
+        super().__init__(**kwargs)
+
+        self._uniform_temporal_subsample = uniform_temporal_subsample
+        self._uniform_crop = uniform_crop
+        self._short_side_scale = short_side_scale
+        self._pad = pad
+
+        video_transforms = []
+        if self._uniform_temporal_subsample is not None:
+            video_transforms.append(UniformTemporalSubsample(self._uniform_temporal_subsample))
+        if self._short_side_scale is not None:
+            video_transforms.extend(
+                (
+                    Lambda(lambda x: x.float()),
+                    ShortSideScale(self._short_side_scale),
+                )
+            )
+
+        if self._uniform_crop is not None:
+            video_transforms.append(Lambda(lambda x: uniform_crop_fn(x, self._uniform_crop, 1)))
+        video_transforms.append(Lambda(lambda x: x / 255.0))  # Always normalize the video
+
+        self._video_transform = Compose(video_transforms)
+        self._audio_transform = Compose([])
+
+    @classmethod
+    def typestr(cls) -> str:
+        return "video"
+
+    def collate(
+        self, batch: List[Dict[str, Optional[torch.Tensor]]]
+    ) -> Dict[
+        str,
+        Optional[
+            Union[
+                torch.Tensor,
+                Dict[str, Union[Optional[torch.Tensor], Optional[List[Optional[torch.Tensor]]]]],
+                List[Optional[torch.Tensor]],
+            ]
+        ],
+    ]:
+        return {
+            "video": stack_arrays_as_dict([b["video"] for b in batch], pad=self._pad),
+            "audio": stack_arrays_as_dict([b["audio"] for b in batch], pad=self._pad),
+        }
+
+    def __call__(self, value: str) -> Dict[str, Optional[torch.Tensor]]:
+        # Load the video
+        with self.resolve_to_local(value) as local_path:
+            video, audio = load_mp4_video(local_path)
+
+        frames = self._video_transform(video) if video is not None else None
+        audio = self._audio_transform(audio) if audio is not None else None
+
+        return {
+            "video": frames,
+            "audio": audio,
+        }
 
 
 class FixedSizeOutputVideoProcessor(S3Processor):
@@ -217,6 +217,7 @@ class FixedSizeOutputVideoProcessor(S3Processor):
             raise ImportError("py-av is not available. Please install py-av with `pip install av`")
         if not TORCHVISION_AVAILABLE:
             raise ImportError("torchvision is not available. Please install torchvision with `pip install torchvision`")
+
         super().__init__(**kwargs)
 
         # if not TORCHAUDIO_AVAILABLE:

@@ -1,10 +1,10 @@
-from typing import Dict, List, Optional, Union, Tuple
+from typing import Dict, List, Optional, Union, Tuple, Any
 
 import numpy as np
 import torch
 
 from ._array_utils import stack_arrays_as_dict
-from ._processor import Processor
+from ._processor import S3Processor
 
 TORCHVISION_AVAILABLE = False
 try:
@@ -23,22 +23,26 @@ except ImportError:
     pass
 
 
-class ImageProcessor(Processor):
+class ImageProcessor(S3Processor):
     def __init__(
         self,
         resize: Optional[Union[int, Tuple[int, ...]]] = None,
         resize_interpolation: str = "bilinear",
         pad: bool = False,
+        **kwargs: Any,
     ) -> None:
 
         if not PIL_AVAILABLE:
             raise ImportError("PIL is not available. Please install PIL with `pip install pillow`")
 
+        super().__init__(**kwargs)
+
         # Build the image processing transform from the keword arguments
         if TORCHVISION_AVAILABLE:
             transforms = []
             if resize is not None:
-                transforms.append(torchvision.transforms.Resize(resize, interpolation=resize_interpolation))
+                rim = torchvision.transforms.functional.InterpolationMode(resize_interpolation)
+                transforms.append(torchvision.transforms.Resize(resize, interpolation=rim))
             transforms.append(torchvision.transforms.ToTensor())
             self._transform = torchvision.transforms.Compose(transforms)
         elif resize is not None:
@@ -65,11 +69,8 @@ class ImageProcessor(Processor):
         return stack_arrays_as_dict(batch, self._pad)
 
     def __call__(self, value: str) -> Optional[torch.Tensor]:
-        # TODO: Determine if this is the right way to deal with empty TSV fields
-        if value.lower() == "none":
-            return None
-
-        with Image.open(value) as img:
-            if TORCHVISION_AVAILABLE:
-                return self._transform(img)
-            return torch.from_numpy(np.array(img))
+        with self.resolve_to_local(value) as fp:
+            with Image.open(fp) as img:
+                if TORCHVISION_AVAILABLE:
+                    return self._transform(img)
+                return torch.from_numpy(np.array(img))

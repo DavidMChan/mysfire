@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Any
 
 import numpy as np
 import torch
@@ -16,10 +16,12 @@ except ImportError:
 
 
 class H5PyDatasetProcessor(Processor):
-    def __init__(self, filepath: str, keys: Optional[str] = None, pad: bool = False):
+    def __init__(self, filepath: str, keys: Optional[str] = None, pad: bool = False, **kwargs: Any):
 
         if not H5PY_AVAILABLE:
             raise ImportError("H5Py is not available. Please install H5Py with `pip install h5py`")
+
+        super().__init__(**kwargs)
 
         self._file = h5py.File(filepath, "r")
         if keys:
@@ -48,10 +50,12 @@ class H5PyDatasetProcessor(Processor):
 
 
 class H5PyMapProcessor(Processor):
-    def __init__(self, filepath: str, keys: Optional[str] = None, pad: str = "false"):
+    def __init__(self, filepath: str, keys: Optional[str] = None, pad: str = "false", **kwargs: Any):
 
         if not H5PY_AVAILABLE:
             raise ImportError("H5Py is not available. Please install H5Py with `pip install h5py`")
+
+        super().__init__(**kwargs)
 
         self._file = h5py.File(filepath, "r")
         if keys:

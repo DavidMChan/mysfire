@@ -32,7 +32,7 @@ class OneShotLoader:
         if len(samples) == 0:
             raise RuntimeError("OneShotLoader requires at least one sample")
         if len(samples) == 1:
-            return OrderedDict((k, v(r)) for (k, v), r in zip(self._processors, samples[0]))
+            return OrderedDict((k, v.load(r)) for (k, v), r in zip(self._processors, samples[0]))
 
         return self.collate_fn(
             [OrderedDict((k, v(r)) for (k, v), r in zip(self._processors, sample)) for sample in samples]

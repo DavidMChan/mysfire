@@ -1,10 +1,11 @@
-from typing import Any, List, Optional, Protocol
+from typing import Any, List, Optional
+from abc import abstractmethod, abstractclassmethod, ABCMeta
 
 from ..cloud_utils import S3Connection, resolve_to_local_path
 from contextlib import _GeneratorContextManager
 
 
-class Processor(Protocol):
+class Processor(metaclass=ABCMeta):
     """Core processor type - Processores must have three methods:
 
     - __call__: Takes a single path/string from the TSV and returns a single object
@@ -13,21 +14,25 @@ class Processor(Protocol):
 
     Optionally, processors may have a `__init__` method which takes any set of Optional[str] arguments
     which are parsed from the TSV header.
-
-    Args:
-        Protocol ([type]): [description]
     """
 
-    def __init__(self, *args, **kwargs) -> None:  # type: ignore
-        pass
+    def __init__(self, prefix: Optional[str] = None, postfix: Optional[str] = None) -> None:
+        self._prefix = prefix
+        self._postfix = postfix
 
-    @classmethod
+    @abstractclassmethod
     def typestr(cls) -> str:
         raise NotImplementedError()
 
+    @abstractmethod
     def collate(self, batch: List[Any]) -> Any:
         raise NotImplementedError()
 
+    def load(self, column: str) -> Any:
+        # Perform the actual loading of the data.
+        return self(f'{self._prefix or ""}{column}{self._postfix or ""}')
+
+    @abstractmethod
     def __call__(self, column: str) -> Optional[Any]:
         raise NotImplementedError()
 
@@ -37,17 +42,16 @@ class S3Processor(Processor):
     Processor base class which additionally adds a convenient connection to allow supporting (optional) S3 objects
     """
 
-    @classmethod
-    def typestr(cls) -> str:
-        return "__s3proc"
-
     def __init__(
         self,
         s3_endpoint: Optional[str] = None,
         s3_access_key: Optional[str] = None,
         s3_secret_key: Optional[str] = None,
         s3_region: Optional[str] = None,
+        **kwargs: Any,
     ) -> None:
+
+        super().__init__(**kwargs)
 
         # Extra variables for enabling S3 support
         self._s3_endpoint = s3_endpoint

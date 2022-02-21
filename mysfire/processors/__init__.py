@@ -3,6 +3,7 @@ import importlib
 import os
 import sys
 from typing import Dict, Optional, Type
+import itertools
 
 from ._processor import Processor, S3Processor
 
@@ -18,7 +19,7 @@ def register_processor(processor: Type[Processor], typestr: Optional[str] = None
         typestr (str, optional): The typestring to register the class with (overrides the class typestring if
                                  specified). Defaults to None.
     """
-    PROCESSORS[typestr or processor.typestr()] = processor
+    PROCESSORS[typestr or processor.typestr()] = processor  # type: ignore
     return processor
 
 
@@ -39,8 +40,16 @@ def register_processor_directory(directory: str) -> None:
             # _plugin_module = importlib.import_module(, "mysfire.processors.{}".format(_plugin_name))
             globals()[_plugin_name] = _plugin_module
 
-    PROCESSORS.update({p.typestr(): p for p in Processor.__subclasses__()})  # type: ignore
-    PROCESSORS.update({p.typestr(): p for p in S3Processor.__subclasses__()})
+    for p in itertools.chain(Processor.__subclasses__(), S3Processor.__subclasses__()):
+        try:
+            PROCESSORS[p.typestr()] = p  # type: ignore
+        except NotImplementedError as e:
+            if p.__name__ in ("S3Processor", "Processor"):
+                continue
+            raise e from e
+
+    # PROCESSORS.update({p.typestr(): p for p in Processor.__subclasses__()})  # type: ignore
+    # PROCESSORS.update({p.typestr(): p for p in S3Processor.__subclasses__()})
 
 
 register_processor_directory(os.path.dirname(__file__))
