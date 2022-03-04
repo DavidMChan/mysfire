@@ -17,11 +17,20 @@ try:
 except ImportError:
     pass
 
+HUGGINGFACE_TRANSFORMERS_AVAILABLE = False
+try:
+    from transformers import AutoTokenizer
+
+    HUGGINGFACE_TRANSFORMERS_AVAILABLE = True
+except ImportError:
+    pass
+
 
 class HuggingfaceTokenizationProcessor(Processor):
     def __init__(
         self,
         tokenizer_json: Optional[str] = None,
+        **kwargs: Any,
     ) -> None:
 
         if not HUGGINGFACE_TOKENIZERS_AVAILABLE:
@@ -29,6 +38,8 @@ class HuggingfaceTokenizationProcessor(Processor):
                 "Huggingface tokenizers are not available."
                 " Please install Huggingface tokenizers with `pip install tokenizers`"
             )
+
+        super().__init__(**kwargs)
 
         # Load the tokenizer definitions from JSON file
         if tokenizer_json is None:
@@ -54,6 +65,48 @@ class HuggingfaceTokenizationProcessor(Processor):
             "text": value,
             "tokens": tokens.tokens,
             "numerized": torch.IntTensor(tokens.ids),
+        }
+
+
+class TransformersTokenizationProcessor(Processor):
+    def __init__(
+        self,
+        tokenizer: Optional[str] = None,
+        **kwargs: Any,
+    ) -> None:
+
+        if not HUGGINGFACE_TRANSFORMERS_AVAILABLE:
+            raise ImportError(
+                "Huggingface transformers are not available."
+                " Please install Huggingface transformers with `pip install transformers`"
+            )
+
+        super().__init__(**kwargs)
+
+        # Load the tokenizer definitions from JSON file
+        if tokenizer is None:
+            raise ValueError("tokenizer must be provided to Huggingface Tokenization processor")
+        self._tokenizer = AutoTokenizer.from_pretrained(tokenizer)
+
+    @classmethod
+    def typestr(cls) -> str:
+        return "nlp.transformers_tokenizer"
+
+    def collate(self, batch: List[Optional[Dict[str, Any]]]) -> Dict[str, Any]:
+        tokens, tokens_seqlen = padded_stack([x["tokens"] if x else [] for x in batch])
+        return {
+            "text": [x["text"] if x else "" for x in batch],
+            "__root__": tokens,
+            "seqlen": tokens_seqlen,
+            "tokens_text": [x["tokens_text"] if x else [] for x in batch],
+        }
+
+    def __call__(self, value: str) -> Optional[Dict[str, Any]]:
+        tokens = self._tokenizer(value.strip().lower())
+        return {
+            "text": value,
+            "tokens": torch.LongTensor(tokens.input_ids),
+            "tokens_text": self._tokenizer.convert_ids_to_tokens(tokens.input_ids),
         }
 
 

@@ -25,7 +25,7 @@ class MysfireHeaderLexer(Lexer):
 
     FLOAT_NUMBER = r"[+-]?(?=\d*[.eE])(?=\.?\d)\d*\.?\d*(?:[eE][+-]?\d+)?"
     NUMBER = r"\d+"
-    BOOL = r"true|false"
+    BOOL = r"true|false|True|False"
     LPAREN = r"\("
     RPAREN = r"\)"
     QSTRING = r'"(?:[^"\\]|\\.)*"'
