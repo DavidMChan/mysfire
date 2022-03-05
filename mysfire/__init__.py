@@ -8,5 +8,5 @@ try:
 except ImportError:
     pass
 
-version = "0.4.3"
+version = "0.4.4"
 __version__ = version

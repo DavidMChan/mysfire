@@ -1,3 +1,9 @@
+## 0.4.4 (2022-03-04)
+
+### Fix
+
+- **mysfire/processors/nlp**: Added new transformers tokenizer, fixed bugs in parser
+
 ## 0.4.3 (2022-02-18)
 
 ### Fix

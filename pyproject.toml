@@ -25,7 +25,7 @@ sections="FUTURE,STDLIB,THIRDPARTY,FIRSTPARTY,LOCALFOLDER"
 
 [tool.commitizen]
 name = "cz_conventional_commits"
-version = "0.4.3"
+version = "0.4.4"
 tag_format = "$version"
 version_files = [ "mysfire/__init__.py", "setup.cfg" ]
 
