@@ -369,7 +369,7 @@ def resolve_to_local_path(
             tls,
             bucket,
         )
-    elif uri.startswith("gcs://"):
+    elif uri.startswith("gs://"):
         return _resolve_to_local_path_gcs(
             uri,
             retry_download,
