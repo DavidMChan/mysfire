@@ -5,6 +5,7 @@ import torch
 
 from ._array_utils import stack_arrays_as_dict
 from ._processor import S3Processor
+from . import register_processor
 
 TORCHVISION_AVAILABLE = False
 try:
@@ -23,6 +24,7 @@ except ImportError:
     pass
 
 
+@register_processor
 class ImageProcessor(S3Processor):
     def __init__(
         self,

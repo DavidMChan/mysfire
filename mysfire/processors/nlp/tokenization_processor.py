@@ -8,6 +8,7 @@ import torch
 
 from mysfire.torch_utils import padded_stack
 from mysfire.processors._processor import Processor, S3Processor
+from mysfire.processors import register_processor
 
 HUGGINGFACE_TOKENIZERS_AVAILABLE = False
 try:
@@ -26,6 +27,7 @@ except ImportError:
     pass
 
 
+@register_processor
 class HuggingfaceTokenizationProcessor(Processor):
     def __init__(
         self,
@@ -68,6 +70,7 @@ class HuggingfaceTokenizationProcessor(Processor):
         }
 
 
+@register_processor
 class TransformersTokenizationProcessor(Processor):
     def __init__(
         self,
@@ -110,6 +113,7 @@ class TransformersTokenizationProcessor(Processor):
         }
 
 
+@register_processor
 class VocabTokenizationProcessor(S3Processor):
     def __init__(
         self,

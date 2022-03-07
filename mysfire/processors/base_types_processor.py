@@ -2,9 +2,11 @@ from typing import List, Optional
 
 import torch
 
+from . import register_processor
 from ._processor import Processor
 
 
+@register_processor
 class IntProcessor(Processor):
     @classmethod
     def typestr(cls) -> str:
@@ -17,6 +19,7 @@ class IntProcessor(Processor):
         return int(value) if value else None
 
 
+@register_processor
 class FloatProcessor(Processor):
     @classmethod
     def typestr(cls) -> str:
@@ -29,6 +32,7 @@ class FloatProcessor(Processor):
         return float(value) if value else None
 
 
+@register_processor
 class StringProcessor(Processor):
     @classmethod
     def typestr(cls) -> str:
@@ -41,6 +45,7 @@ class StringProcessor(Processor):
         return value or None
 
 
+@register_processor
 class StringListProcessor(Processor):
     def __init__(self, delimiter: str = "###"):
         self._delimiter = delimiter

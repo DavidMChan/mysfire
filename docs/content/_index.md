@@ -1,5 +1,5 @@
 ---
-title: "Mysfire: Home"
+title: 'Mysfire: Home'
 date: 2022-02-04T14:38:33-05:00
 draft: false
 weight: 6
@@ -18,6 +18,7 @@ your public or private cloud.
 Install this library with pip - `pip install mysfire[all]`
 
 For a restricted subset of the data loading types, you can use different options:
+
 ```bash
 pip install mysfire # Default options, only basic processors
 pip install mysfire[s3] # Include options for S3 connection
@@ -30,16 +31,17 @@ pip install mysfire[nlp] # Include NLP processors
 ## Tour
 
 Each mysfire dataset is composed of three components:
-1. A definition describing the types of data (and preprocessing steps) in each column of your tabular file. Usually,
-    this is just the header of your CSV or TSV file.
-2. A tabular data store (usually just a CSV or TSV file, but we can load tabular data from S3, SQL or any other
-    extensible columnular store)
-3. A set of processors for processing and loading the data. For most common data types, these processors are built in,
-    but we recognize that every dataset is different, so we make it as easy as possible to add new processors, or
-    download third party processors from the mysfire community hub.
 
+1. A definition describing the types of data (and preprocessing steps) in each column of your tabular file. Usually,
+   this is just the header of your CSV or TSV file.
+2. A tabular data store (usually just a CSV or TSV file, but we can load tabular data from S3, SQL or any other
+   extensible columnular store)
+3. A set of processors for processing and loading the data. For most common data types, these processors are built in,
+   but we recognize that every dataset is different, so we make it as easy as possible to add new processors, or
+   download third party processors from the mysfire community hub.
 
 Let's look at a hello-world mysfire dataset:
+
 ```tsv
 # simple_dataset.tsv
 class:int   data:npy
@@ -50,6 +52,7 @@ class:int   data:npy
 
 That's it. Easy as defining the types of each of the objects and a name for each column as a header in a TSV file. The
 data is then super easy to load to your normal PyTorch workflow:
+
 ```py
 from mysfire import DataLoader
 # Returns a standard PyTorch DataLoader, just replace the dataset with the TSV file!
@@ -59,6 +62,7 @@ for batch in train_dataloader:
 ```
 
 This dataset will produce a dictionary:
+
 ```py
 {
     'class': [0, 1, 2]
@@ -72,6 +76,7 @@ the code to add a new dataset switch! No coding that numpy loading dataset for t
 learned to handle all kinds of numpy types (even ragged arrays!)
 
 Need S3? That's as easy as configuring a column with your S3 details:
+
 ```
 # simple_s3_dataset.tsv
 class:int   data:npy(s3_access_key="XXX",s3_secret_key="XXX",s3_endpoint="XXX")
@@ -81,6 +86,7 @@ class:int   data:npy(s3_access_key="XXX",s3_secret_key="XXX",s3_endpoint="XXX")
 ```
 
 Merging two S3 sources? Configure each column independently:
+
 ```
 # multisource_s3_dataset.tsv
 class:int  data_a:npy(s3_access_key="AAA",s3_secret_key="AAA",s3_endpoint="AAA")    data_b:npy(s3_access_key="BBB",s3_secret_key="BBB",s3_endpoint="BBB")
@@ -100,8 +106,8 @@ class:int   data:npy(s3_access_key=$S3_ACCESS_KEY,s3_secret_key=$S3_SECRET_KEY,s
 2   s3://data/sample_2.npy
 ```
 
-
 Loading images or video?
+
 ```
 # multimedia_s3_dataset.tsv
 class:int   picture:img(resize=256)  frames:video(uniform_temporal_subsample=16)
@@ -111,6 +117,7 @@ class:int   picture:img(resize=256)  frames:video(uniform_temporal_subsample=16)
 ```
 
 Need to do NLP? Huggingface Tokenizers is built in
+
 ```
 # tokenization_s3_dataset.tsv
 class:int   labels:nlp.huggingface_tokenization(tokenizer_json="./tokenizer.json")
@@ -118,8 +125,8 @@ class:int   labels:nlp.huggingface_tokenization(tokenizer_json="./tokenizer.json
 1   Welcome to the Mysfire data processors
 ```
 
-
 Working with PyTorch Lightning? LightningDataModules are built in:
+
 ```py
 from mysfire import LightningDataModule
 datamodule = LightningDataModule(
@@ -130,6 +137,7 @@ datamodule = LightningDataModule(
 ```
 
 Need to run something at test-time? All you need to do is build a OneShotLoader:
+
 ```py
 from mysfire import OneShotLoader
 
@@ -141,6 +149,7 @@ data = loader([["field 1", "field 2"],["field 1", "field 2"]]) # Load data with 
 ```
 
 Need to load a custom datatype? Or extend the existing datatypes? It's super easy:
+
 ```py
 from mysfire import register_processor, Processor
 
@@ -170,6 +179,7 @@ class StringAppendProcessor(Processor):
 ```
 
 Want to add remote data loading to your processor? It's as easy as:
+
 ```py
 from mysfire import register_processor, S3Processor
 
@@ -206,16 +216,10 @@ class S3FileProcessor(S3Processor):
             return None
 ```
 
-Need to register a lot of processors? Make use of the convenient function:
-```py
-from mysfire import register_processor_directory
-
-register_processor_directory('./plugins')
-```
-
 ## Useful?
 
 Cite us!
+
 ```
 Bibtex
 ```

@@ -5,6 +5,7 @@ import torch
 
 from ._array_utils import stack_arrays_as_dict
 from ._processor import Processor
+from . import register_processor
 
 H5PY_AVAILABLE = False
 try:
@@ -15,6 +16,7 @@ except ImportError:
     pass
 
 
+@register_processor
 class H5PyDatasetProcessor(Processor):
     def __init__(self, filepath: str, keys: Optional[str] = None, pad: bool = False, **kwargs: Any):
 
@@ -49,6 +51,7 @@ class H5PyDatasetProcessor(Processor):
         return torch.from_numpy(self._file[int(value)])
 
 
+@register_processor
 class H5PyMapProcessor(Processor):
     def __init__(self, filepath: str, keys: Optional[str] = None, pad: str = "false", **kwargs: Any):
 

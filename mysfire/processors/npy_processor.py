@@ -5,8 +5,10 @@ import torch
 
 from ._array_utils import stack_arrays_as_dict
 from ._processor import S3Processor
+from . import register_processor
 
 
+@register_processor
 class NpyProcessor(S3Processor):
     def __init__(
         self,
@@ -34,9 +36,10 @@ class NpyProcessor(S3Processor):
 
     def __call__(self, value: str) -> Optional[torch.Tensor]:
         with self.resolve_to_local(value) as f:
-            return torch.from_numpy(np.load(f))  # type: ignore
+            return torch.from_numpy(np.load(f))
 
 
+@register_processor
 class NpyIndexedFileProcessor(S3Processor):
     def __init__(
         self,
@@ -48,7 +51,7 @@ class NpyIndexedFileProcessor(S3Processor):
         super().__init__(**kwargs)
 
         with self.resolve_to_local(filepath) as f:
-            self._data = np.load(f)  # type: ignore
+            self._data = np.load(f)
 
         self._pad = pad
 

@@ -5,6 +5,7 @@ import pathlib
 
 from ._array_utils import stack_arrays_as_dict
 from ._processor import S3Processor
+from . import register_processor
 
 PYTORCH_VIDEO_AVAILABLE = False
 try:
@@ -115,6 +116,7 @@ def load_mp4_video(file_path: Union[pathlib.Path, str]) -> Tuple[Optional[torch.
     return video, audio
 
 
+@register_processor
 class VideoProcessor(S3Processor):
     def __init__(
         self,
@@ -191,6 +193,7 @@ class VideoProcessor(S3Processor):
         }
 
 
+@register_processor
 class FixedSizeOutputVideoProcessor(S3Processor):
     def __init__(
         self,
