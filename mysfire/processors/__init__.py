@@ -6,9 +6,7 @@ from typing import Dict, Optional, Type
 
 # import itertools
 
-from ._processor import Processor
-
-# , S3Processor
+from ._processor import Processor, S3Processor  # noqa: F401
 
 # A global registry of all processors available to the system.
 PROCESSORS: Dict[str, Type[Processor]] = {}
