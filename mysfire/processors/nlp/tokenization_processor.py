@@ -1,14 +1,15 @@
-from collections import Counter
-from typing import Any, Dict, List, Optional, Iterable
-from typing import Counter as CounterType
-
-
 import json
+import random
+from collections import Counter
+from typing import Any
+from typing import Counter as CounterType
+from typing import Dict, Iterable, List, Optional
+
 import torch
 
-from mysfire.torch_utils import padded_stack
-from mysfire.processors._processor import Processor, S3Processor
 from mysfire.processors import register_processor
+from mysfire.processors._processor import Processor, S3Processor
+from mysfire.torch_utils import padded_stack
 
 HUGGINGFACE_TOKENIZERS_AVAILABLE = False
 try:
@@ -71,10 +72,93 @@ class HuggingfaceTokenizationProcessor(Processor):
 
 
 @register_processor
+class TokenizersProcessor(Processor):
+    def __init__(
+        self,
+        tokenizer: Optional[str] = None,
+        delimiter: Optional[str] = None,
+        sample_single_string: bool = False,
+        **kwargs: Any,
+    ) -> None:
+
+        if not HUGGINGFACE_TOKENIZERS_AVAILABLE:
+            raise ImportError(
+                "Huggingface tokenizers are not available."
+                " Please install Huggingface tokenizers with `pip install tokenizers`"
+            )
+
+        super().__init__(**kwargs)
+
+        # Load the tokenizer definitions from JSON file
+        if tokenizer is None:
+            raise ValueError("tokenizer_json must be provided to Huggingface Tokenization processor")
+        self._tokenizer = Tokenizer.from_file(tokenizer)
+        self._delimiter = delimiter
+        self._sample_single_string = sample_single_string
+
+    @classmethod
+    def typestr(cls) -> str:
+        return "nlp.tokenizer"
+
+    def collate(self, batch: List[Optional[Dict[str, Any]]]) -> Dict[str, Any]:
+        if self._delimiter is None or self._sample_single_string:
+            tokens, tokens_seqlen = padded_stack([x["tokens"] if x else [] for x in batch])
+            return {
+                "all": [x["all_inputs"] if x else [] for x in batch],
+                "text": [x["text"] if x else "" for x in batch],
+                "__root__": tokens,
+                "seqlen": tokens_seqlen,
+                "tokens_text": [x["tokens_text"] if x else [] for x in batch],
+            }
+
+        return {
+            "all": [x["all_inputs"] if x else [] for x in batch],
+            "text": [x["text"] if x else [] for x in batch],
+            "__root__": [x["tokens"] if x else [] for x in batch],
+            "tokens_text": [x["tokens_text"] if x else [] for x in batch],
+        }
+
+    def __call__(self, value: str) -> Optional[Dict[str, Any]]:
+        if self._delimiter is not None:
+            inputs = value.strip().lower().split(self._delimiter)
+        else:
+            inputs = [value.strip().lower()]
+        _tk = [self._tokenizer.encode(x) for x in inputs]
+        tokens = [torch.LongTensor(t.ids) for t in _tk]
+        tokens_text = [t.tokens for t in _tk]
+
+        if self._delimiter is None:
+            return {
+                "all_inputs": inputs,
+                "text": inputs[0],
+                "tokens": tokens[0],
+                "tokens_text": tokens_text[0],
+            }
+
+        if self._sample_single_string:
+            tx, tk, tktx = random.choice(list(zip(inputs, tokens, tokens_text)))
+            return {
+                "all_inputs": inputs,
+                "text": tx,
+                "tokens": tk,
+                "tokens_text": tktx,
+            }
+
+        return {
+            "all_inputs": inputs,
+            "text": inputs,
+            "tokens": tokens,
+            "tokens_text": tokens_text,
+        }
+
+
+@register_processor
 class TransformersTokenizationProcessor(Processor):
     def __init__(
         self,
         tokenizer: Optional[str] = None,
+        delimiter: Optional[str] = None,
+        sample_single_string: bool = False,
         **kwargs: Any,
     ) -> None:
 
@@ -89,27 +173,64 @@ class TransformersTokenizationProcessor(Processor):
         # Load the tokenizer definitions from JSON file
         if tokenizer is None:
             raise ValueError("tokenizer must be provided to Huggingface Tokenization processor")
+
         self._tokenizer = AutoTokenizer.from_pretrained(tokenizer)
+        self._delimiter = delimiter
+        self._sample_single_string = sample_single_string
 
     @classmethod
     def typestr(cls) -> str:
         return "nlp.transformers_tokenizer"
 
     def collate(self, batch: List[Optional[Dict[str, Any]]]) -> Dict[str, Any]:
-        tokens, tokens_seqlen = padded_stack([x["tokens"] if x else [] for x in batch])
+        if self._delimiter is None or self._sample_single_string:
+            tokens, tokens_seqlen = padded_stack([x["tokens"] if x else [] for x in batch])
+            return {
+                "all": [x["all_inputs"] if x else [] for x in batch],
+                "text": [x["text"] if x else "" for x in batch],
+                "__root__": tokens,
+                "seqlen": tokens_seqlen,
+                "tokens_text": [x["tokens_text"] if x else [] for x in batch],
+            }
+
         return {
-            "text": [x["text"] if x else "" for x in batch],
-            "__root__": tokens,
-            "seqlen": tokens_seqlen,
+            "all": [x["all_inputs"] if x else [] for x in batch],
+            "text": [x["text"] if x else [] for x in batch],
+            "__root__": [x["tokens"] if x else [] for x in batch],
             "tokens_text": [x["tokens_text"] if x else [] for x in batch],
         }
 
     def __call__(self, value: str) -> Optional[Dict[str, Any]]:
-        tokens = self._tokenizer(value.strip().lower())
+        if self._delimiter is not None:
+            inputs = value.strip().lower().split(self._delimiter)
+        else:
+            inputs = [value.strip().lower()]
+        _tk = [self._tokenizer(x) for x in inputs]
+        tokens = [torch.LongTensor(t.input_ids) for t in _tk]
+        tokens_text = [self._tokenizer.convert_ids_to_tokens(t.input_ids) for t in _tk]
+
+        if self._delimiter is None:
+            return {
+                "all_inputs": inputs,
+                "text": inputs[0],
+                "tokens": tokens[0],
+                "tokens_text": tokens_text[0],
+            }
+
+        if self._sample_single_string:
+            index = random.randint(0, len(tokens) - 1)
+            return {
+                "all_inputs": inputs,
+                "text": inputs[index],
+                "tokens": tokens[index],
+                "tokens_text": tokens_text[index],
+            }
+
         return {
-            "text": value,
-            "tokens": torch.LongTensor(tokens.input_ids),
-            "tokens_text": self._tokenizer.convert_ids_to_tokens(tokens.input_ids),
+            "all_inputs": inputs,
+            "text": inputs,
+            "tokens": tokens,
+            "tokens_text": tokens_text,
         }
 
 

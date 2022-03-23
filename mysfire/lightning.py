@@ -46,12 +46,9 @@ if PYTORCH_LIGHTNING_AVAILABLE:
             self._pin_memory = pin_memory
 
         def setup(self, stage: Optional[str] = None) -> None:
-            if stage in ("fit", None):
-                self._train_ds = Dataset(self._train_filepath, self._train_columns) if self._train_filepath else None
-                self._val_ds = Dataset(self._val_filepath, self._val_columns) if self._val_filepath else None
-            if stage in ("test", None):
-                self._val_ds = Dataset(self._val_filepath, self._val_columns) if self._val_filepath else None
-                self._test_ds = Dataset(self._test_filepath, self._test_columns) if self._test_filepath else None
+            self._train_ds = Dataset(self._train_filepath, self._train_columns) if self._train_filepath else None
+            self._val_ds = Dataset(self._val_filepath, self._val_columns) if self._val_filepath else None
+            self._test_ds = Dataset(self._test_filepath, self._test_columns) if self._test_filepath else None
 
         def train_dataloader(self) -> torch.utils.data.DataLoader:
             assert self._train_ds is not None, "No training dataset was provided"

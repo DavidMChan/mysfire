@@ -1,15 +1,15 @@
-from typing import Any, Dict, Generator, List, Mapping, Optional, Tuple, Set
-
-import torch
-import random
 import logging
+import random
+from typing import Any, Dict, Generator, List, Mapping, Optional, Set, Tuple
+
 import pyarrow as pa
+import torch
 from sly.lex import LexError
 
+from .cloud_utils import resolve_to_local_path
 from .parser import MysfireHeaderLexer, MysfireHeaderParser  # type: ignore
 from .processors import PROCESSORS, Processor
 from .vars_registry import VariableRegistry
-from .cloud_utils import resolve_to_local_path
 
 
 def build_processors(header_line: str) -> Generator[Tuple[str, Processor], None, None]:
@@ -52,7 +52,7 @@ def _flatten_dicts(dictionary: Dict[str, Any]) -> Dict[str, Any]:
 
 class Dataset(torch.utils.data.Dataset):
     def __init__(
-        self, filepath: str, columns: Optional[List[str]] = None, resample_on_processor_exception: bool = True
+        self, filepath: str, columns: Optional[List[str]] = None, resample_on_processor_exception: bool = False
     ) -> None:
         self._filepath = filepath
         samples, columns = resolve_samples(self._filepath)
