@@ -1,3 +1,15 @@
+## 0.4.5 (2022-03-23)
+
+### Feat
+
+- **mysfire/processors**: Added new tokenizers processor, minor lightning db changes
+
+### Fix
+
+- **mysfire/__init__.py**: fixed import bugs with new import system
+- **mysfire/**: Changed the way processors are imported
+- **mysfire/cloud_utils.py**: Changed prefix of GCS to gs:// from gcs://
+
 ## 0.4.4 (2022-03-04)
 
 ### Fix
