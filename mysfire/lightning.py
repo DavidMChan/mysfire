@@ -29,6 +29,8 @@ if PYTORCH_LIGHTNING_AVAILABLE:
             test_batch_size: int = 32,
             num_workers: int = 0,
             pin_memory: bool = False,
+            resample_on_processor_exception: bool = False,
+            sample_limit: Optional[int] = None,
         ):
             super().__init__()  # type: ignore
 
@@ -44,11 +46,25 @@ if PYTORCH_LIGHTNING_AVAILABLE:
             self._test_batch_size = test_batch_size
             self._num_workers = num_workers
             self._pin_memory = pin_memory
+            self._resample = resample_on_processor_exception
+            self._limit = sample_limit
 
         def setup(self, stage: Optional[str] = None) -> None:
-            self._train_ds = Dataset(self._train_filepath, self._train_columns) if self._train_filepath else None
-            self._val_ds = Dataset(self._val_filepath, self._val_columns) if self._val_filepath else None
-            self._test_ds = Dataset(self._test_filepath, self._test_columns) if self._test_filepath else None
+            self._train_ds = (
+                Dataset(self._train_filepath, self._train_columns, self._resample, self._limit)
+                if self._train_filepath
+                else None
+            )
+            self._val_ds = (
+                Dataset(self._val_filepath, self._val_columns, self._resample, self._limit)
+                if self._val_filepath
+                else None
+            )
+            self._test_ds = (
+                Dataset(self._test_filepath, self._test_columns, self._resample, self._limit)
+                if self._test_filepath
+                else None
+            )
 
         def train_dataloader(self) -> torch.utils.data.DataLoader:
             assert self._train_ds is not None, "No training dataset was provided"

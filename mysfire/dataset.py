@@ -52,14 +52,18 @@ def _flatten_dicts(dictionary: Dict[str, Any]) -> Dict[str, Any]:
 
 class Dataset(torch.utils.data.Dataset):
     def __init__(
-        self, filepath: str, columns: Optional[List[str]] = None, resample_on_processor_exception: bool = False
+        self,
+        filepath: str,
+        columns: Optional[List[str]] = None,
+        resample_on_processor_exception: bool = False,
+        sample_limit: Optional[int] = None,
     ) -> None:
         self._filepath = filepath
         samples, columns = resolve_samples(self._filepath)
         logging.info(f"Loaded {len(samples)} samples from {self._filepath}")
 
         self._columns = pa.array(columns) if columns else None
-        self._samples = pa.array(samples)
+        self._samples = pa.array(samples[:sample_limit]) if sample_limit else pa.array(samples)
         self._resample_on_exception = resample_on_processor_exception
 
         if self._columns is None:
@@ -124,9 +128,10 @@ class DataLoader(torch.utils.data.DataLoader):
         filepath: str,
         columns: Optional[List[str]] = None,
         resample_on_processor_exception: bool = True,
+        sample_limit: Optional[int] = None,
         **kwargs: Any,
     ) -> None:
-        _active_dataset = Dataset(filepath, columns, resample_on_processor_exception)
+        _active_dataset = Dataset(filepath, columns, resample_on_processor_exception, sample_limit)
         if "collate_fn" not in kwargs:
             kwargs["collate_fn"] = _active_dataset.collate_fn
 
