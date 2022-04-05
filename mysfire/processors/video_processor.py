@@ -200,6 +200,8 @@ class FixedSizeOutputVideoProcessor(S3Processor):
         video_shape: Tuple[int, int, int, int],
         audio_shape: Tuple[int, int],
         short_side_scale: Optional[int] = None,
+        normalize_mean: Optional[Tuple[float, float, float]] = None,
+        normalize_std: Optional[Tuple[float, float, float]] = None,
         **kwargs: Any,
     ):
         """Specifies a fixed output shape for the video. If the video (or audio) doesn't conform to this output shape,
@@ -209,6 +211,9 @@ class FixedSizeOutputVideoProcessor(S3Processor):
             - Only works with the same height/width
             - Only works with 3 RGB channels
             - Only works with 1 mono audio channel
+
+        # Normalize mean for RGB = (0.43216, 0.394666, 0.37645)
+        # Normalize std for RGB = (0.22803, 0.22145, 0.216989)
 
         Args:
             video_shape (Tuple[int]): The shape of the video to produce as a tuple: (Channels, Time, Height, Width)
@@ -245,13 +250,18 @@ class FixedSizeOutputVideoProcessor(S3Processor):
             ShortSideScale(self._short_side_scale) if self._short_side_scale else Lambda(lambda x: x),
             Lambda(lambda x: uniform_crop_fn(x, self._uniform_crop, 1)),
             Lambda(lambda x: x / 255.0),  # Always normalize the video
-            Lambda(lambda x: x.permute(1, 0, 2, 3)),
-            Normalize(
-                mean=(0.43216, 0.394666, 0.37645),
-                std=(0.22803, 0.22145, 0.216989),
-            ),
-            Lambda(lambda x: x.permute(1, 0, 2, 3)),
         ]
+        if normalize_mean is not None:
+            video_transforms.extend(
+                [
+                    Lambda(lambda x: x.permute(1, 0, 2, 3)),
+                    Normalize(
+                        mean=normalize_mean,
+                        std=normalize_std or (1.0, 1.0, 1.0),
+                    ),
+                    Lambda(lambda x: x.permute(1, 0, 2, 3)),
+                ]
+            )
 
         self._video_transform = Compose(video_transforms)
         self._audio_transform = Compose([])
