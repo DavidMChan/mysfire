@@ -1,4 +1,5 @@
 import json
+import os
 import random
 from collections import Counter
 from typing import Any
@@ -78,6 +79,8 @@ class TokenizersProcessor(Processor):
         tokenizer: Optional[str] = None,
         delimiter: Optional[str] = None,
         sample_single_string: bool = False,
+        string_prefix: Optional[str] = None,
+        string_postfix: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
 
@@ -92,9 +95,14 @@ class TokenizersProcessor(Processor):
         # Load the tokenizer definitions from JSON file
         if tokenizer is None:
             raise ValueError("tokenizer_json must be provided to Huggingface Tokenization processor")
-        self._tokenizer = Tokenizer.from_file(tokenizer)
+        if os.path.exists(tokenizer):
+            self._tokenizer = Tokenizer.from_file(tokenizer)
+        else:
+            self._tokenizer = Tokenizer.from_pretrained(tokenizer)
         self._delimiter = delimiter
         self._sample_single_string = sample_single_string
+        self._string_prefix = string_prefix
+        self._string_postfix = string_postfix
 
     @classmethod
     def typestr(cls) -> str:
@@ -123,7 +131,8 @@ class TokenizersProcessor(Processor):
             inputs = value.strip().lower().split(self._delimiter)
         else:
             inputs = [value.strip().lower()]
-        _tk = [self._tokenizer.encode(x) for x in inputs]
+        prefix_inputs = [f"{self._string_prefix or ''}{x}{self._string_postfix or ''}" for x in inputs]
+        _tk = [self._tokenizer.encode(x) for x in prefix_inputs]
         tokens = [torch.LongTensor(t.ids) for t in _tk]
         tokens_text = [t.tokens for t in _tk]
 
