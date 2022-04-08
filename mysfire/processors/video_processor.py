@@ -1,11 +1,11 @@
-from typing import Dict, List, Optional, Union, Tuple, Any
+import pathlib
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import torch
-import pathlib
 
+from . import register_processor
 from ._array_utils import stack_arrays_as_dict
 from ._processor import S3Processor
-from . import register_processor
 
 PYTORCH_VIDEO_AVAILABLE = False
 try:
@@ -68,7 +68,7 @@ def _decode_av(input_: av.container.Container) -> Tuple[torch.Tensor, torch.Tens
             _video[video_idx] = torch.from_numpy(frame.to_ndarray(format="rgb24"))
             video_idx += 1
 
-    return _video.permute(3, 0, 1, 2), _audio.reshape(-1).clip(0, 1)
+    return _video.permute(3, 0, 1, 2), _audio.reshape(-1).clip(-1, 1)
 
 
 def _decode_v(input_: av.container.Container) -> torch.Tensor:
@@ -94,7 +94,7 @@ def _decode_a(input_: av.container.Container) -> torch.Tensor:
     for idx, frame in enumerate(input_.decode(audio=0)):
         base_frame = torch.from_numpy(frame.to_ndarray()).mean(dim=0)  # Mix down audio to mono
         _audio[idx] = torch.nn.functional.pad(base_frame, (0, 1024 - base_frame.shape[0]))
-    return _audio.reshape(-1).clip(0, 1)
+    return _audio.reshape(-1).clip(-1, 1)
 
 
 def load_mp4_video(file_path: Union[pathlib.Path, str]) -> Tuple[Optional[torch.Tensor], Optional[torch.Tensor]]:
