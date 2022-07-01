@@ -33,12 +33,13 @@ def build_processors(header_line: str) -> Generator[Tuple[str, Processor], None,
         yield (output_key, processor)
 
 
-def resolve_samples(filepath: str) -> Tuple[List[List[str]], Optional[List[str]]]:
+def resolve_samples(filepath: str, columns: Optional[List[str]] = None) -> Tuple[List[List[str]], Optional[List[str]]]:
     # TODO: Allow passing connection details through to this function
     with resolve_to_local_path(filepath) as f:
         with open(f, "r") as f:
             samples = [line.strip().split("\t") for line in f]
-    return samples[1:], samples[0]
+    # TODO: Note that there's an issue here if columns is specified, but the TSV has no header
+    return samples[1:], samples[0] if columns is None else columns
 
 
 def _flatten_dicts(dictionary: Dict[str, Any]) -> Dict[str, Any]:
@@ -59,7 +60,7 @@ class Dataset(torch.utils.data.Dataset):
         sample_limit: Optional[int] = None,
     ) -> None:
         self._filepath = filepath
-        samples, columns = resolve_samples(self._filepath)
+        samples, columns = resolve_samples(self._filepath, columns)
         logging.info(f"Loaded {len(samples)} samples from {self._filepath}")
 
         self._columns = pa.array(columns) if columns else None
@@ -119,6 +120,9 @@ class Dataset(torch.utils.data.Dataset):
 
     def get_processors(self) -> List[Tuple[str, Processor]]:
         return self._processors
+
+    def __str__(self) -> str:
+        return f"<mysfire.dataset.Dataset filepath={self._filepath} columns={self._columns}>"
 
 
 class DataLoader(torch.utils.data.DataLoader):
