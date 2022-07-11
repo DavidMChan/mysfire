@@ -1,4 +1,5 @@
 import os
+
 import torch
 
 
@@ -18,7 +19,7 @@ def test_video_processor() -> None:
     # Test the audio
     assert video["audio"].shape == (79872,)
     assert video["audio"].max() <= 1.0
-    assert video["audio"].min() >= 0.0
+    assert video["audio"].min() >= -1.0
 
     # Check for NaNs
     assert not video["video"].isnan().any()
@@ -55,7 +56,7 @@ def test_video_processor_transforms() -> None:
     # Test the audio
     assert video["audio"].shape == (79872,)
     assert video["audio"].max() <= 1.0
-    assert video["audio"].min() >= 0.0
+    assert video["audio"].min() >= -1.0
 
     # Check for NaNs
     assert not video["video"].isnan().any()

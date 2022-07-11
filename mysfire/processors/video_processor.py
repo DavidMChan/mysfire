@@ -309,6 +309,7 @@ class FixedSizeOutputVideoProcessor(S3Processor):
             if video is not None
             else torch.zeros(frames.shape[1], dtype=torch.bool)
         )
+        # TODO: Fix this so that the audio masking happens before the padding above
         audio_sequence_mask = (
             torch.ones(self._audio_shape[0], dtype=torch.bool)
             if audio is not None
