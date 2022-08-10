@@ -79,6 +79,7 @@ class TokenizersProcessor(Processor):
         tokenizer: Optional[str] = None,
         delimiter: Optional[str] = None,
         sample_single_string: bool = False,
+        sample_index: Optional[int] = None,
         string_prefix: Optional[str] = None,
         string_postfix: Optional[str] = None,
         **kwargs: Any,
@@ -103,6 +104,7 @@ class TokenizersProcessor(Processor):
         self._sample_single_string = sample_single_string
         self._string_prefix = string_prefix
         self._string_postfix = string_postfix
+        self._sample_index = sample_index
 
     @classmethod
     def typestr(cls) -> str:
@@ -145,7 +147,10 @@ class TokenizersProcessor(Processor):
             }
 
         if self._sample_single_string:
-            tx, tk, tktx = random.choice(list(zip(inputs, tokens, tokens_text)))
+            if self._sample_index is not None:
+                tx, tk, tktx = list(zip(inputs, tokens, tokens_text))[self._sample_index]
+            else:
+                tx, tk, tktx = random.choice(list(zip(inputs, tokens, tokens_text)))
             return {
                 "all_inputs": inputs,
                 "text": tx,
